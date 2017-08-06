@@ -7,6 +7,7 @@ namespace Translator
 	{
         public void Add(IClassElement element)
         {
+            // TODO: Add logic for methods
             if (base.ContainsKey(element.Name))
             {
                 InfoProvider.AddError("Identifier is already in use", ExceptionType.IdentifierInUse, element.DeclarationPosition);

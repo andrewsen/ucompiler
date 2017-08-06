@@ -38,7 +38,7 @@ namespace Translator
         string file;
         int prevPos;
         int pos;
-        List<int> lines; // TODO: Remove this shit
+        List<int> lines;
         Token cur, prev;
 
         public TokenStream(string source, string file)
