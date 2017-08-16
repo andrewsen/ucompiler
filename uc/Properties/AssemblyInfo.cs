@@ -4,12 +4,12 @@ using System.Runtime.CompilerServices;
 // Information about this assembly is defined by the following attributes.
 // Change them to the values specific to your project.
 
-[assembly: AssemblyTitle("uc")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("uCompiler")]
+[assembly: AssemblyDescription("Compiler of my unnamed language")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("")]
-[assembly: AssemblyCopyright("senko")]
+[assembly: AssemblyCopyright("Andrew Senko <andrewsen98@gmail.com>")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
