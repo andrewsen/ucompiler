@@ -360,7 +360,7 @@ namespace Translator
                     }
                     ++pos;
                 }
-                else if (source[pos] + '"')
+                else if (source[pos] == '"')
                 {
                     while (source[++pos] != '"')
                     {

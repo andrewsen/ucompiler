@@ -69,7 +69,8 @@ namespace Translator
         EosExpexted,
         ExcessToken,
         NonNumericValue,
-        AttributeException
+        AttributeException,
+        ImpossibleError
     }
 
     [Flags]

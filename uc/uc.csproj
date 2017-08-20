@@ -46,6 +46,7 @@
     <Compile Include="LangConstructions.cs" />
     <Compile Include="SyntaxConstructions.cs" />
     <Compile Include="ClassSymbolTable.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

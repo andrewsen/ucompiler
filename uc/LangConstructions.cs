@@ -3,7 +3,7 @@
 
 namespace Translator
 {
-    class CommonClassEntry
+    public class CommonClassEntry
     {
         public Scope Scope;
         public IType Type;
@@ -63,7 +63,7 @@ namespace Translator
             set;
         }
 
-        SourcePosition DeclarationPosition
+        public SourcePosition DeclarationPosition
         {
             get;
             set;
