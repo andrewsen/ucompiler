@@ -5,6 +5,7 @@ namespace Translator
 {
     public class CommonClassEntry
     {
+        public AttributeList AttributeList;
         public Scope Scope;
         public IType Type;
         public ClassEntryModifiers Modifiers;
@@ -43,13 +44,23 @@ namespace Translator
 
     public class ParameterList : List<Variable>
     {
-        
+        public override string ToString()
+        {
+            var result = "";
+            foreach (var variable in this)
+            {
+                result += variable.Type + " " + variable.Name + ", ";
+            }
+            return result.TrimEnd(',', ' ');
+        }
     }
 
     public class Field : IClassElement
     {
         public Scope Scope;
-        public int InitialExpressionPosition;
+		public AttributeList AttributeList;
+		public ClassEntryModifiers Modifiers;
+		public int InitialExpressionPosition;
 
         public string Name
         {
@@ -71,8 +82,10 @@ namespace Translator
 
         public void FromClassEntry(CommonClassEntry entry)
         {
-            this.Name = entry.Name;
-            this.Type = entry.Type;
+            this.AttributeList = entry.AttributeList;
+			this.Name = entry.Name;
+			this.Type = entry.Type;
+            this.Modifiers = entry.Modifiers;
             this.Scope = entry.Scope;
             this.DeclarationPosition = entry.DeclarationPosition;
         }

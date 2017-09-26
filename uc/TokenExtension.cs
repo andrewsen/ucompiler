@@ -97,10 +97,20 @@ namespace Translator
             return result + toks.Current.Representation;
         }
 
+        public static IType CurrentType(this TokenStream toks, bool includeVoid) 
+        {
+            string identifier = toks.GetIdentifier();
+            return readType(toks, identifier, includeVoid);
+        }
+
         public static IType NextType(this TokenStream toks, bool includeVoid)
         {
             string identifier = toks.GetIdentifierNext();
+            return readType(toks, identifier, includeVoid);
+        }
 
+        private static IType readType(TokenStream toks, string identifier, bool includeVoid)
+        {
             if(identifier == "void" && !includeVoid)
                 InfoProvider.AddError("Unexpected `void` type", ExceptionType.IllegalType, toks.SourcePosition);
 

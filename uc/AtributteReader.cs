@@ -79,7 +79,7 @@ namespace Translator
         }
     }
 
-    class AttributeList : List<AttributeObject>
+    public class AttributeList : List<AttributeObject>
     {
         public bool HasAttribute(string name)
         {

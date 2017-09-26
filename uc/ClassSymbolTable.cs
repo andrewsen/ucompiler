@@ -5,9 +5,13 @@ namespace Translator
 {
 	public class ClassSymbolTable
 	{
-		private List<Field> fields;
-        private List<Property> properties;
-        private List<Method> methods;
+		private List<Field> fields = new List<Field>();
+        private List<Property> properties = new List<Property>();
+        private List<Method> methods = new List<Method>();
+
+		public List<Method> Methods => methods;
+		public List<Property> Properties => properties;
+		public List<Field> Fields => fields;
 
 		public void Add(IClassElement element)
 		{
@@ -18,12 +22,11 @@ namespace Translator
             else if (element is Field)
                 AddField(element as Field);
 			InfoProvider.AddError("WTF. Unsupported class element", ExceptionType.ImpossibleError, element.DeclarationPosition);
-			//InfoProvider.AddError("Identifier is already in use", ExceptionType.IdentifierInUse, element.DeclarationPosition);
-			//InfoProvider.AddError("previously declared here", ExceptionType.AdditionalInfo, base[element.Name].DeclarationPosition);
 		}
 
         public void AddField(Field field)
 		{
+            // Checking if identifier exists
 			if (fields.Exists(f => f.Name == field.Name) || properties.Exists(p => p.Name == field.Name))
 			{
 				IClassElement element = fields.Find(f => f.Name == field.Name) ?? methods.Find(m => m.Name == field.Name);
@@ -36,7 +39,7 @@ namespace Translator
 		{
 			if (fields.Exists(f => f.Name == property.Name) || properties.Exists(p => p.Name == property.Name))
 			{
-				IClassElement element = fields.Find(f => f.Name == property.Name) ?? methods.Find(m => m.Name == property.Name);
+                IClassElement element = fields.Find(f => f.Name == property.Name) ?? properties.Find(m => m.Name == property.Name);
 				reportInUse(element);
 			}
 			properties.Add(property);

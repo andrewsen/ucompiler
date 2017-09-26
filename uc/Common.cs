@@ -41,6 +41,11 @@ namespace Translator
     {
     }
 
+    class ClassList : List<ClassType>
+    {
+        
+    }
+
     class Metadata : IDirective
     {
         public string Key;
@@ -51,6 +56,7 @@ namespace Translator
 
     class MetadataList : List<Metadata>
     {
+        
     }
 
     class RuntimeMetadata : Metadata

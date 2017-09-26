@@ -34,16 +34,12 @@ namespace Translator
     }
 
     public enum ExceptionType
-    {
+	{
+		None,
         AdditionalInfo,
-
         IdentifierInUse,
-
         UninitedConstant,
-
         IllegalModifier,
-
-        None,
         PropertyRedefinition,
         ImplicitVariable,
         InvProperty,
@@ -70,7 +66,9 @@ namespace Translator
         ExcessToken,
         NonNumericValue,
         AttributeException,
-        ImpossibleError
+        ImpossibleError,
+        MultipleGetters,
+        MultipleSetters
     }
 
     [Flags]

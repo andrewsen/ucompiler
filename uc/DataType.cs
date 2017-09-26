@@ -69,6 +69,11 @@ namespace Translator
                     return DataTypes.Null;
             }
         }
+
+        public override string ToString()
+        {
+            return string.Format(Type.ToString().ToLower());
+        }
     }
 
     public class ClassType : IType
@@ -76,6 +81,7 @@ namespace Translator
         public string Name;
         public Scope Scope;
         public ClassType Parent;
+        public AttributeList AttributeList;
         public ClassSymbolTable SymbolTable;
 
         public DataTypes Type
@@ -89,12 +95,23 @@ namespace Translator
         public ClassType(string name)
         {
             Name = name;
-            FieldConstructor = new Method();
-            FieldConstructor.Name = name + "$fldCtor";
-            FieldConstructor.Type = new PlainType(DataTypes.Void);
-            FieldConstructor.Parameters = new ParameterList();
-            FieldConstructor.Scope = Scope.Private;
-        }
+
+            SymbolTable = new ClassSymbolTable();
+            AttributeList = new AttributeList();
+
+            var fieldConstructor = new Method();
+            fieldConstructor.Name = name + "$fldCtor";
+            fieldConstructor.Type = new PlainType(DataTypes.Void);
+            fieldConstructor.Parameters = new ParameterList();
+            fieldConstructor.Scope = Scope.Private;
+
+            SymbolTable.Add(fieldConstructor);
+		}
+
+		public override string ToString()
+		{
+			return string.Format(Name);
+		}
     }
 
     public class ArrayType : IType
@@ -114,7 +131,15 @@ namespace Translator
         {
             Inner = inner;
             Dimensions = dimens;
-        }
+		}
+
+		public override string ToString()
+		{
+            string dimens = "";
+            for (int i = 0; i < Dimensions; ++i)
+                dimens += "[]";
+            return string.Format(Inner.ToString() + dimens);
+		}
     }
 }
 

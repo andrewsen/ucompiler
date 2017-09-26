@@ -242,6 +242,7 @@ namespace Translator
             {
                 cur.Type = TokenType.Semicolon;
                 cur.Representation = ";";
+                ++pos;
             }
             else if ("+-*/.!&|%^~<>=".Contains("" + source[pos]))
             {
@@ -367,6 +368,8 @@ namespace Translator
                         if (source[pos] == '\n')
                             lines.Add(pos + 1);
                     }
+                    // Currently points on close quote. Must increment pos
+                    ++pos;
                 }
                 else if (source[pos] == '\'')
                 {
@@ -374,6 +377,8 @@ namespace Translator
                 }
                 else if (source[pos] == '\n')
                     lines.Add(++pos);
+                else
+                    ++pos;
             }
         }
 
