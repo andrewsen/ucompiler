@@ -5,7 +5,28 @@ namespace Translator
 {
     public enum TokenType {
         ImplicitIdentifier, Identifier, Keyword, Delimiter, OperatorAssign, 
-        Operator, Constant, Unknown, EOF, Endl, Semicolon
+        Operator, Constant, Unknown, EOF, Endl, Semicolon,
+    }
+
+    public enum OperationType 
+    {
+        UnaryPlus, UnaryMinus,
+        Inc, Dec, PreInc, PreDec, PostInc, PostDec,
+        Add, Sub, Mul, Div, Mod, 
+        BinOr, BinAnd, Xor, Inv, ShiftLeft, ShiftRight,
+        Not, And, Or, Equals, NotEquals, GreaterEquals, LowerEquals, Greater, Lower,
+        Cast,
+        ArrayGet, ArrayMutate,
+        Getter, Setter,
+        New,
+        Assign,
+        AssignAdd, AssignSub, AssignMul, AssignDiv, AssignMod, AssignBinOr, AssignBinAnd, AssignXor, AssignShiftLeft, AssignShiftRight,
+        AssignAnd, AssignOr
+    }
+
+    public enum Association
+    {
+        Left, Right
     }
 
     public enum ConstantType : int {
@@ -68,7 +89,9 @@ namespace Translator
         AttributeException,
         ImpossibleError,
         MultipleGetters,
-        MultipleSetters
+        MultipleSetters,
+        MissingParenthesis,
+        SemicolonExpected
     }
 
     [Flags]

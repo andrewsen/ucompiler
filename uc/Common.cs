@@ -114,6 +114,8 @@ namespace Translator
 
         public static void Print()
         {
+            if (InfoList.Count == 0)
+                Console.WriteLine("No errors");
             foreach (var i in InfoList)
             {
                 var color = Console.ForegroundColor;

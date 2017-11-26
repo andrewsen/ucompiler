@@ -26,6 +26,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Globalization;
+using uc;
 
 namespace Translator
 {
@@ -35,6 +36,7 @@ namespace Translator
     {
         public TokenType Type;
         public ConstantType ConstType;
+        public Operation Operation;
         public string Representation;
         public int Line;
         public int Position;
@@ -73,6 +75,11 @@ namespace Translator
         }
 
         #region Operations on constants
+
+        public bool IsConstant()
+        {
+            return Type == TokenType.Constant;
+        }
 
         public bool IsNumeric()
         {

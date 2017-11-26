@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Translator
@@ -7,11 +8,20 @@ namespace Translator
     {
         public static void Main(string[] args)
         {
+            // a = arr[4] + (c - d * 4);
             //TokenStream stream = new TokenStream(File.ReadAllText(args[0]), args[0]);
             Compiler compiler = new Compiler(new CompilerConfig() {
-                Sources = new System.Collections.Generic.List<string>() {args[0]}
+                Sources = new System.Collections.Generic.List<string>() { "a"/*args[0]*/}
             });
-            compiler.Compile();
+            var expr = compiler.parseExpression(new TokenStream(args[0], "<stdin>")) as Expression;
+            var root = compiler.buildAST(expr);
+            foreach(var tok in expr.Tokens)
+            {
+                Console.Write(tok + " ");
+			}
+            Console.WriteLine();
+            InfoProvider.Print();
+            //compiler.Compile();
             //Token tok = stream.Next();
             //while (tok.Type != TokenType.EOF)
             //{

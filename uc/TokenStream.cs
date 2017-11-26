@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using uc;
 
 namespace Translator
 {
@@ -99,6 +100,11 @@ namespace Translator
 
         public bool Eof => cur.Type == TokenType.EOF;
 
+        public bool NextEof()
+        {
+            return Next().Type == TokenType.EOF;
+        }
+
         public TokenStream Pass()
         {
             Next();
@@ -113,6 +119,7 @@ namespace Translator
             try
             {
                 prevPos = pos;                
+                prev = cur;
                 return nextToken();
             }
             catch (IndexOutOfRangeException)
@@ -133,6 +140,7 @@ namespace Translator
         {
             prev = cur;
             cur = new Token();
+            cur.Type = TokenType.Unknown;
             string temp = "";
 
             while (" \t\n".Contains("" + source[pos])) // Throws OutOfRange
@@ -168,12 +176,17 @@ namespace Translator
             {
                 temp += source[pos];
                 while (isValidIdentSymbol(source[++pos]))
-                    temp += source[pos];
-                if (temp == "true" || temp == "false")
-                {
-                    cur.Type = TokenType.Constant;
-                    cur.ConstType = ConstantType.Bool;
-                }
+					temp += source[pos];
+				if (temp == "true" || temp == "false")
+				{
+					cur.Type = TokenType.Constant;
+					cur.ConstType = ConstantType.Bool;
+				}
+				if (temp == "and" || temp == "or")
+				{
+                    cur.Type = TokenType.Operator;
+                    cur.Operation = Operation.From(temp);
+				}
                 else if (temp == "null")
                 {
                     cur.Type = TokenType.Constant;
@@ -231,9 +244,16 @@ namespace Translator
                 {
                     cur.ConstType = ConstantType.I32;
                 }
+
+                if(isValidIdentStartSymbol(source[pos]))
+                {
+                    InfoProvider.AddError("Illegal numeric identifier", ExceptionType.NonNumericValue, SourcePosition);
+                }
                 cur.Representation = temp;
-            }
-            else if ("{}[]():,?@".Contains("" + source[pos]))
+			}
+			// Enable after Lab4
+			//else if ("{}[]():,?@".Contains("" + source[pos]))
+			else if ("{}[](),?@".Contains("" + source[pos]))
             {
                 cur.Type = TokenType.Delimiter;
                 cur.Representation = "" + source[pos++];
@@ -244,38 +264,47 @@ namespace Translator
                 cur.Representation = ";";
                 ++pos;
             }
-            else if ("+-*/.!&|%^~<>=".Contains("" + source[pos]))
+            else if ("+-*/.:!&|%^~<>=".Contains("" + source[pos]))
             {
                 cur.Type = TokenType.Operator;
                 temp += source[pos];
                 string dop = source[pos] + "" + source[pos + 1];
-                if (new List<string>{ "++", "--", "==", "!=", "<=", ">=", "->", "<-", "=>", ">>", "<<", "||", "&&", "??" }.Contains(dop))
+                // Enable after Lab4
+				//if (new List<string> { "++", "--", "==", "!=", "<=", ">=", "->", "<-", "=>", ">>", "<<", "||", "&&", }.Contains(dop))
+				if (new List<string>{ ":=", "<>", "<=", ">=", "=>", ">>", "<<" }.Contains(dop))
                 {
                     temp = dop;
+                    cur.Operation = Operation.From(dop);
                     pos += 2;
                 }
                 else if (new List<string>{ "+=", "-=", "*=", "/=", "|=", "&=", "^=", "~=", "%=" }.Contains(dop))
                 {
-                    temp = dop;
+					temp = dop;
+					cur.Operation = Operation.From(dop);
                     pos += 2;
                     cur.Type = TokenType.OperatorAssign;
                 }
                 else if (new List<string>{ ">>=", "<<=" }.Contains(dop + source[pos + 2]))
                 {
-                    temp = dop + source[pos + 2];
-                    pos += 3;
+					temp = dop + source[pos + 2];
+					pos += 3;
+					cur.Operation = Operation.From(temp);
                     cur.Type = TokenType.OperatorAssign;
                 }
                 else
+				{
+					cur.Operation = Operation.From(temp);
                     ++pos;
+                }
                 cur.Representation = temp;
             }
-            else if ("" + source[pos] == "#")
-            {
-                cur.Type = TokenType.ImplicitIdentifier;
-                cur.Representation = "#";
-                ++pos;
-            }
+            // Enable after Lab4
+            //else if ("" + source[pos] == "#")
+            //{
+            //    cur.Type = TokenType.ImplicitIdentifier;
+            //    cur.Representation = "#";
+            //    ++pos;
+            //}
             if (source[pos] == '"')
             {
                 temp = "\"";
@@ -295,6 +324,11 @@ namespace Translator
                 cur.Representation = temp + "'";
                 cur.Type = TokenType.Constant;
                 cur.ConstType = ConstantType.Char;
+            }
+            if(cur.Type == TokenType.Unknown)
+            {
+                InfoProvider.AddError($"Unknown symbol `{source[pos]}`", ExceptionType.IllegalToken, SourcePosition);
+                ++pos;
             }
 
             cur.Line = lines.Last();//6[lines.Count-1];
@@ -318,7 +352,7 @@ namespace Translator
         public void PushBack()
         {
             pos = prevPos;
-            //cur = prev
+            cur = prev;
         }
 
         public void SkipTo(string str, bool include=false)
@@ -385,7 +419,7 @@ namespace Translator
         public string LineAt(int num)
         {
             string line = "";
-            while(source[num] != '\n')
+            while(num < source.Length && source[num] != '\n')
                 line += source[num++];
             return line;
         }

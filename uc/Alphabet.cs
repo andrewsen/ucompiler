@@ -1,8 +1,9 @@
-﻿using System;
+﻿// Do not print
+using System;
 
 namespace Translator
 {
-    public static class Alphabet
+	public static class Alphabet
 	{
 		public const string IF = "if";
 		public const string ELSE = "else";
@@ -19,7 +20,7 @@ namespace Translator
 		public const string IMPORT = "import";
 		public const string CLASS = "class";
 		public const string STATIC = "static";
-        public const string NATIVE = "native";
+		public const string NATIVE = "native";
 		public const string CONST = "const";
 		public const string PUBLIC = "public";
 		public const string PRIVATE = "private";
@@ -43,10 +44,10 @@ namespace Translator
 		public const string GETTER_DECL = POINTER;
 		public const string SETTER_DECL = "<-";
 		public const string LAMBDA = "=>";
-        public const string ASSIGN = "=";
+		public const string ASSIGN = "=";
 
-        public const char BLOCK_CHAR_O = '{';
-        public const char BLOCK_CHAR_C = '}';
+		public const char BLOCK_CHAR_O = '{';
+		public const char BLOCK_CHAR_C = '}';
 
 	}
 }
