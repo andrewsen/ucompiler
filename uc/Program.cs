@@ -14,7 +14,7 @@ namespace Translator
                 Sources = new System.Collections.Generic.List<string>() { "a"/*args[0]*/}
             });
             var expr = compiler.parseExpression(new TokenStream(args[0], "<stdin>")) as Expression;
-            var root = compiler.buildAST(expr);
+            //var root = compiler.buildAST(expr);
             foreach(var tok in expr.Tokens)
             {
                 Console.Write(tok + " ");

@@ -11,9 +11,10 @@ namespace Translator
         public SourcePosition SourcePosition;
         public List<Token> Tokens;
 
-        public Expression(List<Token> resultingExpression)
+        public Expression(List<Token> resultingExpression, SourcePosition position)
         {
             this.Tokens = resultingExpression;
+            SourcePosition = position;
         }
     }
 

@@ -11,6 +11,7 @@ namespace uc
         public OperationType Type;
         public Association Association;
         public int Priority;
+        public int ArgumentCount;
 
         private Operation() 
         {
@@ -51,6 +52,14 @@ namespace uc
 					result.Type = OperationType.BinAnd;
 					result.Priority = 6;
 					break;
+				case "new":
+                    result.Type = OperationType.New;
+					result.Priority = 12;
+					break;
+                case "()":
+					result.Type = OperationType.FunctionCall;
+					result.Priority = 12;
+					break;
 				case "!":
 					result.Type = OperationType.Not;
 					result.Priority = 12;
@@ -64,17 +73,18 @@ namespace uc
 					result.Priority = 5;
 					break;
                 // Enable after Lab4
-				//case "=":
+				//case ":=":
 				//	result.Type = OperationType.Assign;
 				//	result.Priority = 1;
 				//	break;
-				case ":=":
+				case "=":
 					result.Type = OperationType.Assign;
 					result.Priority = 1;
+					result.Association = Association.Right;
 					break;
 				case "[]":
                     result.Type = OperationType.ArrayGet;
-					result.Priority = 12;
+					result.Priority = 13;
 					break;
 				case "++":
 					result.Type = OperationType.Inc;
@@ -85,22 +95,14 @@ namespace uc
 					result.Priority = 12;
 					break;
 				// Enable after Lab 4
-				//case "==":
-				//  result.Type = OperationType.Equals;
-				//  result.Priority = 7;
-				//  break;
-				//case "!=":
-				//  result.Type = OperationType.NotEquals;
-				//  result.Priority = 7;
-				//  break;
-				case "=":
+				case "==":
 				  result.Type = OperationType.Equals;
 				  result.Priority = 7;
 				  break;
-				case "<>":
-				  result.Type = OperationType.NotEquals;
-				  result.Priority = 7;
-				  break;
+				case "!=":
+					result.Type = OperationType.NotEquals;
+					result.Priority = 7;
+					break;
 				case "<=":
 					result.Type = OperationType.LowerEquals;
 					result.Priority = 8;
@@ -126,22 +128,22 @@ namespace uc
 					result.Priority = 9;
 					break;
                 // Enable after Lab4
-				//case "||":
-				//	result.Type = OperationType.Or;
-				//	result.Priority = 2;
-				//	break;
-				//case "&&":
-				//	result.Type = OperationType.And;
-				//	result.Priority = 3;
-				//	break;
-				case "or":
+				case "||":
 					result.Type = OperationType.Or;
 					result.Priority = 2;
 					break;
-				case "and":
+				case "&&":
 					result.Type = OperationType.And;
 					result.Priority = 3;
 					break;
+				//case "or":
+				//	result.Type = OperationType.Or;
+				//	result.Priority = 2;
+				//	break;
+				//case "and":
+				//	result.Type = OperationType.And;
+				//	result.Priority = 3;
+				//	break;
 				case "+=":
 					result.Type = OperationType.AssignAdd;
 					result.Priority = 1;
@@ -163,12 +165,12 @@ namespace uc
 					result.Association = Association.Right;
 					break;
 				case "|=":
-					result.Type = OperationType.AssignOr;
+					result.Type = OperationType.AssignBinOr;
 					result.Priority = 1;
 					result.Association = Association.Right;
 					break;
 				case "&=":
-					result.Type = OperationType.AssignAnd;
+					result.Type = OperationType.AssignBinAnd;
 					result.Priority = 1;
 					result.Association = Association.Right;
 					break;

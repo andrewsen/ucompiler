@@ -1,4 +1,4 @@
-﻿//
+﻿﻿//
 //  Token.cs
 //
 //  Author:
@@ -34,6 +34,8 @@ namespace Translator
 
     public class Token
     {
+        private static readonly Token eof = new Token{ Type = TokenType.EOF, Representation = "" };
+
         public TokenType Type;
         public ConstantType ConstType;
         public Operation Operation;
@@ -59,10 +61,22 @@ namespace Translator
             }
         }
 
+        public static Token EOF => eof;
+
         public static implicit operator string(Token tok)
         {
             return tok.Representation;
-        }
+		}
+
+		public bool IsOneOf(params string[] vals)
+		{
+			return vals.Contains(this.Representation);
+		}
+
+		public bool IsOneOf(TokenType type, params string[] vals)
+		{
+			return vals.Contains(this.Representation) && Type == type;
+		}
 
         public static bool IsNumeric(ConstantType type)
         {

@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Linq;
 using System.IO;
 
@@ -472,35 +472,34 @@ namespace Translator
 
         //
         // Parse
+        //
 
         public IExpression parseExpression(TokenStream gStream)
         {
-            // TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
+			// TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
 
-            List<Token> resultingExpression = new List<Token>();
+			List<Token> resultingExpression = new List<Token>();
+			Stack<int> functionArgCounter = new Stack<int>();
 			Stack<Token> opStack = new Stack<Token>();
-			bool isLastOp = true;
-			bool isLastBrace = false;
-			bool isLastIdent = false;
+            Token lastToken = Token.EOF;
 
             while(gStream.Next().Type != TokenType.Semicolon)
-            {
-                if(gStream.Current.Type == TokenType.EOF)
-                {
-                    InfoProvider.AddError("Semicilion `;` is missed", ExceptionType.SemicolonExpected, gStream.SourcePosition);
-                    break;
-                }
+			{
+                //Console.WriteLine($"Current {gStream.Current}");
+                //if(gStream.Current.Type == TokenType.EOF)
+                //{
+                //    InfoProvider.AddError("Semicilion `;` is missed", ExceptionType.SemicolonExpected, gStream.SourcePosition);
+                //    break;
+                //}
 				var token = gStream.Current;
                 if(token.IsConstant() || token.IsIdentifier())
 				{
-					if (isLastBrace)
+                    if (lastToken.IsOneOf(PAR_C, INDEXER_C))
 						InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, gStream.SourcePosition);
-                    if (isLastIdent)
+                    if (lastToken.IsIdentifier())
                         InfoProvider.AddError("Unexpected identifier", ExceptionType.BadExpression, gStream.SourcePosition);
                     resultingExpression.Add(token);
-					isLastOp = false;
-					isLastBrace = false;
-                    isLastIdent = true;
+                    lastToken = token;
                 }
                 if (token.IsOp())
                 {
@@ -511,6 +510,7 @@ namespace Translator
 					 * переложить op2 из стека в выходную очередь;
 					*/
                     while (opStack.Count > 0 && opStack.Peek().IsOp())
+                    {
                         if ((token.Operation.Association == Association.Left && token.Operation.Priority < opStack.Peek().Operation.Priority)
                            || (token.Operation.Association == Association.Right && token.Operation.Priority <= opStack.Peek().Operation.Priority))
                         {
@@ -518,25 +518,23 @@ namespace Translator
                         }
                         else
                             break;
+                    }
                     opStack.Push(token);
-                    isLastOp = true;
-                    isLastBrace = false;
-                    isLastIdent = false;
+                    lastToken = token;
                 }
                 else if (token == INDEXER_O)
 				{
-					if (isLastOp)
+                    if (lastToken.IsOp())
 						InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, gStream.SourcePosition);
 					opStack.Push(token);
-					isLastIdent = false;
-					isLastOp = true;
+                    lastToken = token;
                 }
                 else if (token == INDEXER_C)
                 {
                     // a = b[c + 4];
                     // a b[c + 4] - 6 =
                     // a b c 4 + [] 6 - =
-                    if (isLastOp)
+                    if (lastToken.IsOp())
                         InfoProvider.AddError("Unexpected `]`", ExceptionType.Brace, gStream.SourcePosition);
 
                     while (opStack.Count > 0 && opStack.Peek() != INDEXER_O)
@@ -552,27 +550,59 @@ namespace Translator
                     token.Representation = "[]";
                     token.Type = TokenType.Operator;
                     token.Operation = Operation.From("[]");
-                    resultingExpression.Add(token);
-                    isLastBrace = true;
+					resultingExpression.Add(token);
+					lastToken = token;
                 }
                 else if (token == PAR_O)
 				{
-					if (!isLastOp)
+                    // Process as function
+                    // x = fun(1, g(5, y*(3-i), 8));
+                    if (lastToken.IsIdentifier())
+                    {
+                        // Function call operator
+                        token.Representation = "()";
+                        token.Type = TokenType.Operator;
+                        token.Operation = Operation.From("()");
+                        functionArgCounter.Push(0);
+                    }
+                    else if (!lastToken.IsOp())
 						InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, gStream.SourcePosition);
-                    opStack.Push(token);
+					opStack.Push(token);
+					lastToken = token;
                 }
                 else if (token == PAR_C)
 				{
-					if (isLastOp)
+					if (lastToken.IsOp())
                         InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, gStream.SourcePosition);
                     while (opStack.Count > 0 && opStack.Peek() != PAR_O)
-						resultingExpression.Add(opStack.Pop());
+                    {
+                        if (opStack.Peek().Operation.Type == OperationType.FunctionCall)
+                        {
+                            var callOp = opStack.Peek();
+                            callOp.Operation.ArgumentCount = functionArgCounter.Pop();
+                            resultingExpression.Add(callOp);
+                        }
+                        else
+                            resultingExpression.Add(opStack.Pop());
+                    }
 					if (opStack.Count == 0)
                         InfoProvider.AddError("`(` is missed", ExceptionType.MissingParenthesis, gStream.SourcePosition);
                     else
 						opStack.Pop();
-					isLastBrace = true;
                 }
+                else if(token == SEP)
+                {
+					if (!(lastToken.IsConstant() || lastToken.IsIdentifier() || lastToken == PAR_C || lastToken == INDEXER_C))
+                        InfoProvider.AddError("Unexpected comma", ExceptionType.UnexpectedComma, gStream.SourcePosition);
+                    functionArgCounter.Push(functionArgCounter.Pop()+1);
+                }
+				//Console.Write("\tOp stack:\n\t");
+				//foreach (var op in opStack)
+				//	Console.Write($"{op} ");
+				//Console.Write("\n\tToken array:\n\t");
+				//foreach (var op in resultingExpression)
+				//	Console.Write($"{op} ");
+				//Console.WriteLine();
             }
             while(opStack.Count > 0)
             {
@@ -583,13 +613,12 @@ namespace Translator
                     InfoProvider.AddError("`]` is missed", ExceptionType.Brace, gStream.SourcePosition);
                 resultingExpression.Add(op);
 			}
-            return new Expression(resultingExpression);
+            return new Expression(resultingExpression, gStream.SourcePosition);
         }
 
         public Node buildAST(Expression expr)
         {
             // a b c * 4 e * + =
-            var count = expr.Tokens.Count;
             return buildNode(new Stack<Token>(expr.Tokens), expr.SourcePosition);
         }
 

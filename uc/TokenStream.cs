@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -124,8 +124,7 @@ namespace Translator
             }
             catch (IndexOutOfRangeException)
             {
-                cur = new Token();
-                cur.Type = TokenType.EOF;
+                cur = Token.EOF;
                 return cur;
             }
         }
@@ -182,16 +181,22 @@ namespace Translator
 					cur.Type = TokenType.Constant;
 					cur.ConstType = ConstantType.Bool;
 				}
-				if (temp == "and" || temp == "or")
+				// For Lab 4
+				//if (temp == "and" || temp == "or")
+				//{
+				//    cur.Type = TokenType.Operator;
+				//    cur.Operation = Operation.From(temp);
+				//}
+				else if (temp == "null")
 				{
-                    cur.Type = TokenType.Operator;
-                    cur.Operation = Operation.From(temp);
+					cur.Type = TokenType.Constant;
+					cur.ConstType = ConstantType.Null;
 				}
-                else if (temp == "null")
-                {
-                    cur.Type = TokenType.Constant;
-                    cur.ConstType = ConstantType.Null;
-                }
+				else if (temp == "new")
+				{
+					cur.Type = TokenType.Constant;
+					cur.ConstType = ConstantType.Null;
+				}
                 else
                     cur.Type = TokenType.Identifier;
                 cur.Representation = temp;
@@ -252,8 +257,8 @@ namespace Translator
                 cur.Representation = temp;
 			}
 			// Enable after Lab4
-			//else if ("{}[]():,?@".Contains("" + source[pos]))
-			else if ("{}[](),?@".Contains("" + source[pos]))
+			else if ("{}[]():,?@".Contains("" + source[pos]))
+			//else if ("{}[](),?@".Contains("" + source[pos]))
             {
                 cur.Type = TokenType.Delimiter;
                 cur.Representation = "" + source[pos++];
@@ -268,25 +273,25 @@ namespace Translator
             {
                 cur.Type = TokenType.Operator;
                 temp += source[pos];
-                string dop = source[pos] + "" + source[pos + 1];
+                string twoCharOp = source[pos] + "" + source[pos + 1];
                 // Enable after Lab4
-				//if (new List<string> { "++", "--", "==", "!=", "<=", ">=", "->", "<-", "=>", ">>", "<<", "||", "&&", }.Contains(dop))
-				if (new List<string>{ ":=", "<>", "<=", ">=", "=>", ">>", "<<" }.Contains(dop))
+				if (new List<string> { "++", "--", "==", "!=", "<=", ">=", "->", "<-", "=>", ">>", "<<", "||", "&&", }.Contains(twoCharOp))
+				//if (new List<string>{ ":=", "<>", "<=", ">=", "=>", ">>", "<<" }.Contains(dop))
                 {
-                    temp = dop;
-                    cur.Operation = Operation.From(dop);
+                    temp = twoCharOp;
+                    cur.Operation = Operation.From(twoCharOp);
                     pos += 2;
                 }
-                else if (new List<string>{ "+=", "-=", "*=", "/=", "|=", "&=", "^=", "~=", "%=" }.Contains(dop))
+                else if (new List<string>{ "+=", "-=", "*=", "/=", "|=", "&=", "^=", "~=", "%=" }.Contains(twoCharOp))
                 {
-					temp = dop;
-					cur.Operation = Operation.From(dop);
+					temp = twoCharOp;
+					cur.Operation = Operation.From(twoCharOp);
                     pos += 2;
                     cur.Type = TokenType.OperatorAssign;
                 }
-                else if (new List<string>{ ">>=", "<<=" }.Contains(dop + source[pos + 2]))
+                else if (new List<string>{ ">>=", "<<=" }.Contains(twoCharOp + source[pos + 2]))
                 {
-					temp = dop + source[pos + 2];
+					temp = twoCharOp + source[pos + 2];
 					pos += 3;
 					cur.Operation = Operation.From(temp);
                     cur.Type = TokenType.OperatorAssign;
@@ -299,12 +304,12 @@ namespace Translator
                 cur.Representation = temp;
             }
             // Enable after Lab4
-            //else if ("" + source[pos] == "#")
-            //{
-            //    cur.Type = TokenType.ImplicitIdentifier;
-            //    cur.Representation = "#";
-            //    ++pos;
-            //}
+            else if ("" + source[pos] == "#")
+            {
+                cur.Type = TokenType.ImplicitIdentifier;
+                cur.Representation = "#";
+                ++pos;
+            }
             if (source[pos] == '"')
             {
                 temp = "\"";
@@ -500,4 +505,3 @@ namespace Translator
         }
     }
 }
-

@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 
 
 namespace Translator
@@ -21,7 +21,7 @@ namespace Translator
         New,
         Assign,
         AssignAdd, AssignSub, AssignMul, AssignDiv, AssignMod, AssignBinOr, AssignBinAnd, AssignXor, AssignShiftLeft, AssignShiftRight,
-        AssignAnd, AssignOr
+        FunctionCall,
     }
 
     public enum Association
@@ -81,7 +81,7 @@ namespace Translator
         Brace, 
         IllegalToken,
         IllegalCast,
-        ComaExpected,
+        CommaExpected,
         IllegalType,
         EosExpexted,
         ExcessToken,
@@ -91,7 +91,8 @@ namespace Translator
         MultipleGetters,
         MultipleSetters,
         MissingParenthesis,
-        SemicolonExpected
+        SemicolonExpected,
+        UnexpectedComma
     }
 
     [Flags]
