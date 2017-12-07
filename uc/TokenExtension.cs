@@ -50,10 +50,10 @@ namespace Translator
             return toks.Next() == str && toks.Current.ConstType == constType;
         }
 
-        public static void CheckNext(this TokenStream toks, string str, ExceptionType extype)
+        public static void CheckNext(this TokenStream toks, string str, ExceptionType extype, bool fatal = false)
         {
             if(!toks.IsNext(str))
-                InfoProvider.AddError("`"+str+"` expected", extype, toks.SourcePosition);
+                InfoProvider.AddError("`" + str + "` expected", extype, toks.SourcePosition, fatal);
         }
 
         public static void Check(this TokenStream toks, string str, ExceptionType extype)

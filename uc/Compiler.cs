@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Linq;
 using System.IO;
 
@@ -209,8 +209,8 @@ namespace Translator
                 gStream.Next();
                 //TODO: Move attributes parsing to readCommonClassEntry()
                 if(gStream.Is(ATTR))
-				{
-					parseAttribute(gStream);
+                {
+                    parseAttribute(gStream);
                 }
                 else if (gStream.Is(BLOCK_O) || gStream.Is(SHORT_FUNC_DECL))
                 {
@@ -293,18 +293,18 @@ namespace Translator
             {
                 while (!gStream.Eof)
                 {
-					if (gStream.Next() == GETTER_DECL)
-					{
-						if (property.Getter != null)
-							InfoProvider.AddError("Getter for this property already exists", ExceptionType.MultipleGetters, gStream.SourcePosition);
-						property.Getter = parsePropertyFunction(entry, gStream);
-					}
-					else if (gStream.Is(SETTER_DECL))
-					{
-						if (property.Setter != null)
-							InfoProvider.AddError("Setter for this property already exists", ExceptionType.MultipleSetters, gStream.SourcePosition);
-						property.Setter = parsePropertyFunction(entry, gStream);
-					}
+                    if (gStream.Next() == GETTER_DECL)
+                    {
+                        if (property.Getter != null)
+                            InfoProvider.AddError("Getter for this property already exists", ExceptionType.MultipleGetters, gStream.SourcePosition);
+                        property.Getter = parsePropertyFunction(entry, gStream);
+                    }
+                    else if (gStream.Is(SETTER_DECL))
+                    {
+                        if (property.Setter != null)
+                            InfoProvider.AddError("Setter for this property already exists", ExceptionType.MultipleSetters, gStream.SourcePosition);
+                        property.Setter = parsePropertyFunction(entry, gStream);
+                    }
                     else if (gStream.Is(BLOCK_C))
                         break;
                     // TODO: Reporting illegal token
@@ -339,9 +339,9 @@ namespace Translator
             method.Parameters = paramList;
 
             if (gStream.Next() == SHORT_FUNC_DECL)
-			{
-				// Saving method start token (points after '->' symbol)
-				method.Begin = gStream.TokenPosition;
+            {
+                // Saving method start token (points after '->' symbol)
+                method.Begin = gStream.TokenPosition;
             }
             else if (gStream.Is(BLOCK_O))
             {
@@ -387,8 +387,8 @@ namespace Translator
         {               
             CommonClassEntry entry = new CommonClassEntry();
 
-			entry.AttributeList = bindedAttributeList;
-			entry.Scope = readScope(gStream);
+            entry.AttributeList = bindedAttributeList;
+            entry.Scope = readScope(gStream);
             entry.DeclarationPosition = gStream.SourcePosition;
             entry.Modifiers = readModifiers(gStream);
             entry.Type = gStream.CurrentType(true);
@@ -448,15 +448,15 @@ namespace Translator
         void compileFile(string src)
         {
             foreach(var clazz in classList)
-			{
-				Console.WriteLine("Class `{0}`", clazz.Name);
-				Console.WriteLine("\tFields:");
-				foreach (var field in clazz.SymbolTable.Fields)
-					Console.WriteLine("\t\t{0}, {1} `{2}` of type `{3}`", field.Modifiers, field.Scope, field.Name, field.Type.ToString());
-				Console.WriteLine("\tProperties:");
-				foreach (var prop in clazz.SymbolTable.Properties)
-					Console.WriteLine("\t\t{0}, {1}, `{2}` of type `{3}`", prop.Modifiers, prop.Scope, prop.Name, prop.Type.ToString());
-				Console.WriteLine("\tMethods:");
+            {
+                Console.WriteLine("Class `{0}`", clazz.Name);
+                Console.WriteLine("\tFields:");
+                foreach (var field in clazz.SymbolTable.Fields)
+                    Console.WriteLine("\t\t{0}, {1} `{2}` of type `{3}`", field.Modifiers, field.Scope, field.Name, field.Type.ToString());
+                Console.WriteLine("\tProperties:");
+                foreach (var prop in clazz.SymbolTable.Properties)
+                    Console.WriteLine("\t\t{0}, {1}, `{2}` of type `{3}`", prop.Modifiers, prop.Scope, prop.Name, prop.Type.ToString());
+                Console.WriteLine("\tMethods:");
                 foreach (var method in clazz.SymbolTable.Methods)
                     Console.WriteLine("\t\t{0}, {1} `{2}` of type `{3}` with params `{4}`", 
                                       method.Modifiers, method.Scope, method.Name, method.Type.ToString(), method.Parameters.ToString());
@@ -472,44 +472,117 @@ namespace Translator
 
         //
         // Parse
+        //
 
-        public IExpression parseExpression(TokenStream gStream)
+        public CodeBlock parseBlock(TokenStream gStream)
         {
+            var block = new CodeBlock();
+            while (!gStream.Eof)
+            {
+                var entryToken = gStream.Next();
+                if (entryToken.Type == TokenType.EOF)
+                    InfoProvider.AddError("Missing end of block statement (`end;`)", ExceptionType.FlowError, gStream.SourcePosition, true);
+                if (entryToken.Type == TokenType.Unknown)
+                    InfoProvider.AddError("Bad expression", ExceptionType.BadExpression, gStream.SourcePosition, true);
+                switch (entryToken.Representation.ToLower())
+                {
+                    case IF:
+                        evalIf(block, gStream);
+                        break;
+                    case BLOCK_O:
+                        block.Children.Add(parseBlock(gStream));
+                        break;
+                    case BLOCK_C:
+                        gStream.CheckNext(STAT_SEP, ExceptionType.SemicolonExpected);
+                        return block;
+                    default:
+                        gStream.PushBack();
+                        block.Children.Add(new Statement(buildAST(parseExpression(gStream, TokenType.Semicolon))));
+                        break;
+                }
+            }
+            InfoProvider.AddError("Block closing statement is missing", ExceptionType.Brace, gStream.SourcePosition);
+            return block;
+        }
+
+        public void evalIf(CodeBlock block, TokenStream gStream)
+        {
+            // Shit. Rewrite
+            var ifExpr = new If();
+
+            gStream.CheckNext(PAR_O, ExceptionType.MissingParenthesis);
+
+            string collectedExpr = "";
+            int parCounter = 1;
+            while(parCounter > 0)
+            {
+                if (gStream.IsNext(PAR_O))
+                    parCounter++;
+                else if (gStream.Is(PAR_C))
+                {
+                    parCounter--;
+                    if (parCounter == 0)
+                        break;
+                }
+                else if (gStream.Eof)
+                {
+                    InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, gStream.SourcePosition, true);
+                }
+                collectedExpr += gStream.Current.Representation + " ";
+            }
+            if (collectedExpr.Length == 0)
+                InfoProvider.AddError("Empty statement", ExceptionType.BadExpression, gStream.SourcePosition);
+
+            ifExpr.Condition = buildAST(parseExpression(new TokenStream(collectedExpr, gStream.SourcePosition.File)));
+            if (ifExpr.Condition.Token.IsOp() && ifExpr.Condition.Token.Operation.Type == OperationType.Assign)
+                InfoProvider.AddError("Assignment is forbidden in conditions", ExceptionType.IllegalToken, gStream.SourcePosition);
+
+            block.Children.Add(ifExpr);
+
+            gStream.CheckNext(THEN, ExceptionType.BadExpression, true);
+            gStream.CheckNext(BLOCK_O, ExceptionType.BadExpression, true);
+            ifExpr.Block = parseBlock(gStream);
+        }
+
+        public Expression parseExpression(TokenStream gStream, TokenType stopToken = TokenType.EOF)
+        {
+            // If (a>b) then begin end;
+            // if (a>b) {}
             // TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
 
             List<Token> resultingExpression = new List<Token>();
-			Stack<Token> opStack = new Stack<Token>();
-			bool isLastOp = true;
-			bool isLastBrace = false;
-			bool isLastIdent = false;
+            Stack<Token> opStack = new Stack<Token>();
+            bool isLastOp = true;
+            bool isLastBrace = false;
+            bool isLastIdent = false;
 
-            while(gStream.Next().Type != TokenType.Semicolon)
+            while(gStream.Next().Type != stopToken)
             {
-                if(gStream.Current.Type == TokenType.EOF)
-                {
-                    InfoProvider.AddError("Semicilion `;` is missed", ExceptionType.SemicolonExpected, gStream.SourcePosition);
-                    break;
-                }
-				var token = gStream.Current;
+                //if(gStream.Current.Type == TokenType.EOF)
+                //{
+                //    InfoProvider.AddError("Semicilion `;` is missed", ExceptionType.SemicolonExpected, gStream.SourcePosition);
+                //    break;
+                //}
+                var token = gStream.Current;
                 if(token.IsConstant() || token.IsIdentifier())
-				{
-					if (isLastBrace)
-						InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, gStream.SourcePosition);
+                {
+                    if (isLastBrace)
+                        InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, gStream.SourcePosition);
                     if (isLastIdent)
                         InfoProvider.AddError("Unexpected identifier", ExceptionType.BadExpression, gStream.SourcePosition);
                     resultingExpression.Add(token);
-					isLastOp = false;
-					isLastBrace = false;
+                    isLastOp = false;
+                    isLastBrace = false;
                     isLastIdent = true;
                 }
-                if (token.IsOp())
+                else if (token.IsOp())
                 {
                     /*
                      * Пока присутствует на вершине стека токен оператор op2, и
-					 * Либо оператор op1 лево-ассоциативен и его приоритет меньше, чем у оператора op2 либо равен,
-					 * или оператор op1 право-ассоциативен и его приоритет меньше, чем у op2,
-					 * переложить op2 из стека в выходную очередь;
-					*/
+                     * Либо оператор op1 лево-ассоциативен и его приоритет меньше, чем у оператора op2 либо равен,
+                     * или оператор op1 право-ассоциативен и его приоритет меньше, чем у op2,
+                     * переложить op2 из стека в выходную очередь;
+                    */
                     while (opStack.Count > 0 && opStack.Peek().IsOp())
                         if ((token.Operation.Association == Association.Left && token.Operation.Priority < opStack.Peek().Operation.Priority)
                            || (token.Operation.Association == Association.Right && token.Operation.Priority <= opStack.Peek().Operation.Priority))
@@ -524,12 +597,12 @@ namespace Translator
                     isLastIdent = false;
                 }
                 else if (token == INDEXER_O)
-				{
-					if (isLastOp)
-						InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, gStream.SourcePosition);
-					opStack.Push(token);
-					isLastIdent = false;
-					isLastOp = true;
+                {
+                    if (isLastOp)
+                        InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, gStream.SourcePosition);
+                    opStack.Push(token);
+                    isLastIdent = false;
+                    isLastOp = true;
                 }
                 else if (token == INDEXER_C)
                 {
@@ -541,8 +614,8 @@ namespace Translator
 
                     while (opStack.Count > 0 && opStack.Peek() != INDEXER_O)
                     {
-						if ((opStack.Peek() == PAR_O))
-							InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, gStream.SourcePosition);
+                        if ((opStack.Peek() == PAR_O))
+                            InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, gStream.SourcePosition);
                         resultingExpression.Add(opStack.Pop());
                     }
                     if (opStack.Count == 0)
@@ -556,33 +629,35 @@ namespace Translator
                     isLastBrace = true;
                 }
                 else if (token == PAR_O)
-				{
-					if (!isLastOp)
-						InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, gStream.SourcePosition);
+                {
+                    if (!isLastOp)
+                        InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, gStream.SourcePosition);
                     opStack.Push(token);
                 }
                 else if (token == PAR_C)
-				{
-					if (isLastOp)
+                {
+                    if (isLastOp)
                         InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, gStream.SourcePosition);
                     while (opStack.Count > 0 && opStack.Peek() != PAR_O)
-						resultingExpression.Add(opStack.Pop());
-					if (opStack.Count == 0)
+                        resultingExpression.Add(opStack.Pop());
+                    if (opStack.Count == 0)
                         InfoProvider.AddError("`(` is missed", ExceptionType.MissingParenthesis, gStream.SourcePosition);
                     else
-						opStack.Pop();
-					isLastBrace = true;
+                        opStack.Pop();
+                    isLastBrace = true;
                 }
+                else
+                    InfoProvider.AddError("Unexpected token", ExceptionType.IllegalToken, gStream.SourcePosition);
             }
             while(opStack.Count > 0)
             {
-				var op = opStack.Pop();
-				if (op == PAR_O)
-					InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, gStream.SourcePosition);
+                var op = opStack.Pop();
+                if (op == PAR_O)
+                    InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, gStream.SourcePosition);
                 if (op == INDEXER_O)
                     InfoProvider.AddError("`]` is missed", ExceptionType.Brace, gStream.SourcePosition);
                 resultingExpression.Add(op);
-			}
+            }
             return new Expression(resultingExpression);
         }
 
@@ -597,23 +672,23 @@ namespace Translator
         {
             if (rpn.Count == 0)
                 return null;
-			var tok = rpn.Pop();
+            var tok = rpn.Pop();
 
-			Node result = new Node(tok);
-			if(tok.IsOp())
-			{
+            Node result = new Node(tok);
+            if(tok.IsOp())
+            {
                 result.Right = buildNode(rpn, position);
-				result.Left = buildNode(rpn, position);
+                result.Left = buildNode(rpn, position);
 
                 if (result.Left == null && result.Right == null)
                     InfoProvider.AddError($"Both arguments of {tok} is missed", ExceptionType.BadExpression, position);
                 else if (result.Left == null || result.Right == null)
-					InfoProvider.AddError($"Argument of {tok} is missed", ExceptionType.BadExpression, position);
+                    InfoProvider.AddError($"Argument of {tok} is missed", ExceptionType.BadExpression, position);
                 else if (tok.Operation.Type == OperationType.Assign && result.Left.Token.IsConstant())
-					InfoProvider.AddError("rvalue can't be on left side of assignment operator", ExceptionType.lValueExpected, position);
-				// Pascal specific
-				else if (result.Left.Token.Operation?.Type == OperationType.Assign || result.Right.Token.Operation?.Type == OperationType.Assign)
-					InfoProvider.AddError($"Assignment operator can be only as a root node", ExceptionType.BadExpression, position);
+                    InfoProvider.AddError("rvalue can't be on left side of assignment operator", ExceptionType.lValueExpected, position);
+                // Pascal specific
+                else if (result.Left.Token.Operation?.Type == OperationType.Assign || result.Right.Token.Operation?.Type == OperationType.Assign)
+                    InfoProvider.AddError($"Assignment operator can be only as a root node", ExceptionType.BadExpression, position);
             }
 
             return result;

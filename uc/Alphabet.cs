@@ -32,8 +32,14 @@ namespace Translator
 		public const string IMPL_IDENTIFIER = "#";
 		public const string PAR_O = "(";
 		public const string PAR_C = ")";
-		public const string BLOCK_O = "{";
-		public const string BLOCK_C = "}";
+
+		// Uncomment after lab 5
+		//public const string BLOCK_O = "{";
+		//public const string BLOCK_C = "}";
+		public const string BLOCK_O = "begin";
+		public const string BLOCK_C = "end";
+
+
 		public const string STAT_SEP = ";";
 		public const string SEP = ",";
 		public const string INDEXER_O = "[";
@@ -49,5 +55,7 @@ namespace Translator
 		public const char BLOCK_CHAR_O = '{';
 		public const char BLOCK_CHAR_C = '}';
 
+        //PASCAL
+        public const string THEN = "then";
 	}
 }

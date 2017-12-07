@@ -89,11 +89,11 @@ namespace Translator
 
         private static int errorCount = 0;
 
-        public static void AddError(string what, ExceptionType ex, SourcePosition where)
+        public static void AddError(string what, ExceptionType ex, SourcePosition where, bool fatal = false)
         {                
             Add(InfoType.Error, what, ex, where);
             errorCount++;
-            if(errorCount >  ErrorLimit)
+            if (errorCount > ErrorLimit || fatal)
                 ErrorLimitReached?.Invoke();            
         }
 

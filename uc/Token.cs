@@ -260,7 +260,8 @@ namespace Translator
 
         public override string ToString()
         {
-            return Representation;
+            return "{" + Representation + "}: " + Type + (Type == TokenType.Constant ? (", " + ConstType) : "") + (Type == TokenType.Operator ? (", " + Operation) : "");
+			//return $"{Type} {Representation}";
         }
     }
 }

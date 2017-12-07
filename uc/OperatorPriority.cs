@@ -198,6 +198,11 @@ namespace uc
 
             return result;
         }
+
+        public override string ToString()
+        {
+            return string.Format($"{Type} ({this.View})");
+        }
     }
 
 	public class OperatorPriority
