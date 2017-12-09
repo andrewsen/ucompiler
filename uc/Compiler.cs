@@ -493,7 +493,9 @@ namespace Translator
                         block.Children.Add(parseBlock(gStream));
                         break;
                     case BLOCK_C:
-                        gStream.CheckNext(STAT_SEP, ExceptionType.SemicolonExpected);
+                        if (gStream.Next().Type != TokenType.Semicolon)
+                            gStream.PushBack();
+                        //gStream.CheckNext(STAT_SEP, ExceptionType.SemicolonExpected);
                         return block;
                     default:
                         gStream.PushBack();
@@ -516,17 +518,17 @@ namespace Translator
             int parCounter = 1;
             while(parCounter > 0)
             {
-                if (gStream.IsNext(PAR_O))
+                if (gStream.Eof || gStream.Next().Type == TokenType.EOF)
+                {
+                    InfoProvider.AddError("Closing bracket expected `)`", ExceptionType.Brace, gStream.SourcePosition, true);
+                }
+                if (gStream.Is(PAR_O))
                     parCounter++;
                 else if (gStream.Is(PAR_C))
                 {
                     parCounter--;
                     if (parCounter == 0)
                         break;
-                }
-                else if (gStream.Eof)
-                {
-                    InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, gStream.SourcePosition, true);
                 }
                 collectedExpr += gStream.Current.Representation + " ";
             }

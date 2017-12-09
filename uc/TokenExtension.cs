@@ -35,19 +35,20 @@ namespace Translator
             return toks.Current == str && toks.Current.ConstType == constType;
         }
 
+        //TODO: Lab5 ToLower() remove
         public static bool IsNext(this TokenStream toks, string str)
         {
-            return toks.Next() == str;
+            return toks.Next().Representation.ToLower() == str;
         }
 
         public static bool IsNext(this TokenStream toks, string str, TokenType tokType)
         {
-            return toks.Next() == str && toks.Current.Type == tokType;
+            return toks.Next().Representation.ToLower() == str && toks.Current.Type == tokType;
         }
 
         public static bool IsNext(this TokenStream toks, string str, ConstantType constType)
         {
-            return toks.Next() == str && toks.Current.ConstType == constType;
+            return toks.Next().Representation.ToLower() == str && toks.Current.ConstType == constType;
         }
 
         public static void CheckNext(this TokenStream toks, string str, ExceptionType extype, bool fatal = false)
