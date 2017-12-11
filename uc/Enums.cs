@@ -1,7 +1,7 @@
 ﻿﻿using System;
 
 
-namespace Translator
+namespace Lab4
 {
     public enum TokenType {
         ImplicitIdentifier, Identifier, Keyword, Delimiter, OperatorAssign, 
@@ -105,7 +105,8 @@ namespace Translator
         UnexpectedToken,
         NotImplemented,
         FunctionName,
-        InvalidMemberAccess
+        InvalidMemberAccess,
+        InternalError
     }
 
     public enum DeclarationForm
@@ -113,9 +114,12 @@ namespace Translator
         Full, Short
     }
 
+    [Flags]
     public enum ParsingPolicy
     {
-        Brackets, Semicolon, Both
+        Brackets = 0x1, 
+        Semicolon = 0x2, 
+        Both = 0x3
     }
 
     [Flags]

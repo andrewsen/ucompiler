@@ -2,11 +2,11 @@
 using System.Linq;
 using System.IO;
 
-using static Translator.Alphabet;
+using static Lab4.Alphabet;
 using System.Collections.Generic;
 using uc;
 
-namespace Translator
+namespace Lab4
 {
     public class Compiler
     {
@@ -94,7 +94,7 @@ namespace Translator
                     {
                         if ((attr.Data.Count > 2 || attr.Data.Count < 1 || !(attr.Data[0].Value is string)) && !attr.Data[0].IsOptional)
                         {
-                            InfoProvider.AddError("@AddMeta: Incorrect data", ExceptionType.AttributeException, gStream.SourcePosition);
+                            CompilerLog.AddError("@AddMeta: Incorrect data", ExceptionType.AttributeException, gStream.SourcePosition);
                             //throw new AttributeException("AddMeta", "Incorrect data");
                         }
 
@@ -120,7 +120,7 @@ namespace Translator
                                       where m.Key == md.Key
                                         select m;
                         if (mlist.ToList().Count != 0)
-                            InfoProvider.AddError("Meta key " + md.Key + " exists", ExceptionType.MetaKeyExists, gStream.SourcePosition);
+                            CompilerLog.AddError("Meta key " + md.Key + " exists", ExceptionType.MetaKeyExists, gStream.SourcePosition);
                             //throw new CompilerException(ExceptionType.MetaKeyExists, "Meta key " + md.key + " in module " + CommandArgs.source + " exists", tokens);
 
                         metadataList.Add(md);
@@ -128,26 +128,26 @@ namespace Translator
                     break;
                 case "Module":
                     if (attr.Data.Count != 1 && !(attr.Data[0].Value is string))
-                        InfoProvider.AddError("@Module: Incorrect name", ExceptionType.AttributeException, gStream.SourcePosition);
+                        CompilerLog.AddError("@Module: Incorrect name", ExceptionType.AttributeException, gStream.SourcePosition);
                         //throw new AttributeException("Module", "Incorrect module name");
                     if (compilerConfig.OutBinaryFile == null)
                         compilerConfig.OutBinaryFile = (attr.Data[0].Value as string) + ".vas"; // TODO: FIXME
                     break;
                 case "RuntimeInternal":
                     if (attr.Data.Count != 0)
-                        InfoProvider.AddError("@RuntimeInternal: Too many arguments", ExceptionType.AttributeException, gStream.SourcePosition);
+                        CompilerLog.AddError("@RuntimeInternal: Too many arguments", ExceptionType.AttributeException, gStream.SourcePosition);
                         //throw new AttributeException("RuntimeInternal", "Too many arguments");
                     if (!attr.Binded)
-                        InfoProvider.AddError("@RuntimeInternal must be binded to method (check `;`)", ExceptionType.AttributeException, gStream.SourcePosition);
+                        CompilerLog.AddError("@RuntimeInternal must be binded to method (check `;`)", ExceptionType.AttributeException, gStream.SourcePosition);
                         //throw new AttributeException("RuntimeInternal", "`@RuntimeInternal` must be binded to function (check `;`)");
                     bindedAttributeList.Add(attr);
                     break;
                 case "Entry":
                     if (attr.Data.Count != 0)
-                        InfoProvider.AddError("@Entry: Too many arguments", ExceptionType.AttributeException, gStream.SourcePosition);
+                        CompilerLog.AddError("@Entry: Too many arguments", ExceptionType.AttributeException, gStream.SourcePosition);
                         //throw new AttributeException("Entry", "Too many arguments");
                     if (!attr.Binded)
-                        InfoProvider.AddError("@Entry must be binded to method (check `;`)", ExceptionType.AttributeException, gStream.SourcePosition);
+                        CompilerLog.AddError("@Entry must be binded to method (check `;`)", ExceptionType.AttributeException, gStream.SourcePosition);
                         //throw new AttributeException("Entry", "`@Entry` must be binded to function (check `;`)");
                     bindedAttributeList.Add(attr);
                     break;
@@ -159,7 +159,7 @@ namespace Translator
 
                         if ((attr.Data.Count > 2 || attr.Data.Count < 1 || !(attr.Data[0].Value is string)) && !attr.Data[0].IsOptional)
                         {
-                            InfoProvider.AddError("@Debug:Set: Incorrect data", ExceptionType.AttributeException, gStream.SourcePosition);
+                            CompilerLog.AddError("@Debug:Set: Incorrect data", ExceptionType.AttributeException, gStream.SourcePosition);
                             //throw new AttributeException("Debug:Set", "Incorrect data");
                         }
                         RuntimeMetadata md = new RuntimeMetadata();                       
@@ -196,7 +196,7 @@ namespace Translator
                     }
                     break;
                 default:
-                    InfoProvider.AddWarning("Unknown attribute `@" + attr.Name + "`", ExceptionType.AttributeException, gStream.SourcePosition);
+                    CompilerLog.AddWarning("Unknown attribute `@" + attr.Name + "`", ExceptionType.AttributeException, gStream.SourcePosition);
                     break;
             }
         }
@@ -231,9 +231,9 @@ namespace Translator
                 {
                     // Property
                     if (entry.HasVoidType)
-                        InfoProvider.AddError("Void type not allowed for properties", ExceptionType.IllegalType, gStream.SourcePosition);
+                        CompilerLog.AddError("Void type not allowed for properties", ExceptionType.IllegalType, gStream.SourcePosition);
                     if (entry.Modifiers.HasFlag(ClassEntryModifiers.Native))
-                        InfoProvider.AddError("Properties can't be native", ExceptionType.IllegalModifier, gStream.SourcePosition);
+                        CompilerLog.AddError("Properties can't be native", ExceptionType.IllegalModifier, gStream.SourcePosition);
                     
                     Property property = parseProperty(entry, gStream);
 
@@ -243,9 +243,9 @@ namespace Translator
                 {
                     // Method
                     if (entry.Modifiers.HasFlag(ClassEntryModifiers.Const))
-                        InfoProvider.AddError("Methods can't be const", ExceptionType.IllegalModifier, gStream.SourcePosition);
+                        CompilerLog.AddError("Methods can't be const", ExceptionType.IllegalModifier, gStream.SourcePosition);
                     if (entry.Modifiers.HasFlag(ClassEntryModifiers.Native) && !entry.Modifiers.HasFlag(ClassEntryModifiers.Static))
-                        InfoProvider.AddError("Native methods must be declared as `static`", ExceptionType.IllegalModifier, gStream.SourcePosition);
+                        CompilerLog.AddError("Native methods must be declared as `static`", ExceptionType.IllegalModifier, gStream.SourcePosition);
 
                     Method method = parseMethod(entry, gStream);
 
@@ -255,9 +255,9 @@ namespace Translator
                 {
                     // Field
                     if (entry.HasVoidType)
-                        InfoProvider.AddError("Void type not allowed for fields", ExceptionType.IllegalType, gStream.SourcePosition);
+                        CompilerLog.AddError("Void type not allowed for fields", ExceptionType.IllegalType, gStream.SourcePosition);
                     if (entry.Modifiers.HasFlag(ClassEntryModifiers.Native))
-                        InfoProvider.AddError("Fields can't be native", ExceptionType.IllegalModifier, gStream.SourcePosition);
+                        CompilerLog.AddError("Fields can't be native", ExceptionType.IllegalModifier, gStream.SourcePosition);
 
                     Field field = parseField(entry, gStream);
 
@@ -276,7 +276,7 @@ namespace Translator
         {
             Field field = new Field();
             if (gStream.Is(STAT_SEP) && entry.Modifiers.HasFlag(ClassEntryModifiers.Const))
-                InfoProvider.AddError("Const field must be initialized immediately", ExceptionType.UninitedConstant, gStream.SourcePosition);
+                CompilerLog.AddError("Const field must be initialized immediately", ExceptionType.UninitedConstant, gStream.SourcePosition);
             field.FromClassEntry(entry);
             if (gStream.Is(ASSIGN))
             {
@@ -311,19 +311,19 @@ namespace Translator
                     if (gStream.Next() == GETTER_DECL)
                     {
                         if (property.Getter != null)
-                            InfoProvider.AddError("Getter for this property already exists", ExceptionType.MultipleGetters, gStream.SourcePosition);
+                            CompilerLog.AddError("Getter for this property already exists", ExceptionType.MultipleGetters, gStream.SourcePosition);
                         property.Getter = parsePropertyFunction(entry, gStream);
                     }
                     else if (gStream.Is(SETTER_DECL))
                     {
                         if (property.Setter != null)
-                            InfoProvider.AddError("Setter for this property already exists", ExceptionType.MultipleSetters, gStream.SourcePosition);
+                            CompilerLog.AddError("Setter for this property already exists", ExceptionType.MultipleSetters, gStream.SourcePosition);
                         property.Setter = parsePropertyFunction(entry, gStream);
                     }
                     else if (gStream.Is(BLOCK_C))
                         break;
                     else
-                        InfoProvider.AddError("Unexpected symbol", ExceptionType.UnexpectedToken, gStream.SourcePosition);
+                        CompilerLog.AddError("Unexpected symbol", ExceptionType.UnexpectedToken, gStream.SourcePosition);
                     // TODO: Reporting illegal token
                 }
             }
@@ -372,7 +372,7 @@ namespace Translator
             }
             else
             {
-                InfoProvider.AddError("Unexpected symbol", ExceptionType.UnexpectedToken, gStream.SourcePosition);
+                CompilerLog.AddError("Unexpected symbol", ExceptionType.UnexpectedToken, gStream.SourcePosition);
             }
 
             return method;
@@ -400,7 +400,7 @@ namespace Translator
                 else if(gStream.Is(SEP))
                     gStream.Next();
                 else
-                    InfoProvider.AddError("`,` or `)` expected in parameter declaration", ExceptionType.IllegalToken, gStream.SourcePosition);
+                    CompilerLog.AddError("`,` or `)` expected in parameter declaration", ExceptionType.IllegalToken, gStream.SourcePosition);
             }
 
             return plist;
@@ -477,7 +477,7 @@ namespace Translator
                 method.Body.ClassContext = method.Class;
             }
             else
-                InfoProvider.AddError("Short form is unsupported now", ExceptionType.NotImplemented, method.DeclarationPosition);
+                CompilerLog.AddError("Short form is unsupported now", ExceptionType.NotImplemented, method.DeclarationPosition);
         }
 
         private CodeBlock evalBlock(CodeBlock parent, TokenStream lStream)
@@ -487,7 +487,7 @@ namespace Translator
             var entryToken = lStream.Next();
 
             if (!(entryToken.IsIdentifier() || entryToken.IsOp() || (entryToken.IsDelim() && entryToken.Representation == BLOCK_O)))
-                InfoProvider.AddError("Identifier, control keyword, type or block expected", ExceptionType.IllegalToken, lStream.SourcePosition);
+                CompilerLog.AddError("Identifier, control keyword, type or block expected", ExceptionType.IllegalToken, lStream.SourcePosition);
 
             switch(entryToken.Representation)
             {
@@ -569,9 +569,9 @@ namespace Translator
                 if (token.IsConstant() || token.IsIdentifier())
                 {
                     if (lastToken.IsOneOf(PAR_C, INDEXER_C))
-                        InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("Unexpected identifier after brace", ExceptionType.Brace, stream.SourcePosition);
                     if (lastToken.IsIdentifier())
-                        InfoProvider.AddError("Unexpected identifier", ExceptionType.BadExpression, stream.SourcePosition);
+                        CompilerLog.AddError("Unexpected identifier", ExceptionType.BadExpression, stream.SourcePosition);
                     resultingExpression.Add(token);
                     lastToken = token;
                 }
@@ -614,7 +614,7 @@ namespace Translator
                 else if (token == INDEXER_O)
                 {
                     if (lastToken.IsOp())
-                        InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("[ unexpected", ExceptionType.Brace, stream.SourcePosition);
                     opStack.Push(token);
                     lastToken = token;
                 }
@@ -624,16 +624,16 @@ namespace Translator
                     // a b[c + 4] - 6 =
                     // a b c 4 + [] 6 - =
                     if (lastToken.IsOp())
-                        InfoProvider.AddError("Unexpected `]`", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("] unexpected", ExceptionType.Brace, stream.SourcePosition);
 
                     while (opStack.Count > 0 && opStack.Peek() != INDEXER_O)
                     {
                         if (opStack.Peek() == PAR_O)
-                            InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
+                            CompilerLog.AddError(") expected", ExceptionType.MissingParenthesis, stream.SourcePosition);
                         resultingExpression.Add(opStack.Pop());
                     }
                     if (opStack.Count == 0)
-                        InfoProvider.AddError("`[` is missed", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("[ expected", ExceptionType.Brace, stream.SourcePosition);
                     else
                         opStack.Pop();
                     token.Representation = "[]";
@@ -692,7 +692,7 @@ namespace Translator
                         functionArgCounter.Push(0);
                     }
                     else if (!lastToken.IsOp())
-                        InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("Illegal (", ExceptionType.Brace, stream.SourcePosition);
                     opStack.Push(token);
                     lastToken = token;
                 }
@@ -701,7 +701,7 @@ namespace Translator
                     bool isFuncCall = false;
                     bracketsCount--;
                     if (lastToken.IsOp() && lastToken.Operation.Type != OperationType.FunctionCall)
-                        InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("Illegal )", ExceptionType.Brace, stream.SourcePosition);
                     while (opStack.Count > 0 && opStack.Peek() != PAR_O)
                     {
                         var op = opStack.Peek();
@@ -716,28 +716,32 @@ namespace Translator
                         resultingExpression.Add(opStack.Pop());
                     }
                     if (opStack.Count == 0 && !isFuncCall)
-                        InfoProvider.AddError("`(` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
-                    //else if(!isFuncCall)
-                    opStack.Pop();
+                        CompilerLog.AddError("Expected (", ExceptionType.MissingParenthesis, stream.SourcePosition);
+                    else
+                        opStack.Pop();
                 }
                 else if (token == SEP)
                 {
                     if (!(lastToken.IsConstant() || lastToken.IsIdentifier() || lastToken == PAR_C || lastToken == INDEXER_C))
-                        InfoProvider.AddError("Unexpected comma", ExceptionType.UnexpectedComma, stream.SourcePosition);
+                        CompilerLog.AddError("Unexpected comma", ExceptionType.UnexpectedComma, stream.SourcePosition);
                     functionArgCounter.Push(functionArgCounter.Pop() + 1);
                     while (opStack.Count != 0 && opStack.Peek() != PAR_O)
                         resultingExpression.Add(opStack.Pop());
                     lastToken = token;
                     //isUnary = true;
                 }
+                else if(token.Type == TokenType.Semicolon && !parsingPolicy.HasFlag(ParsingPolicy.Semicolon))
+                    CompilerLog.AddError("Unexpected token", ExceptionType.UnexpectedToken, stream.SourcePosition);
+                else
+                    CompilerLog.AddError("Unexpected token", ExceptionType.UnexpectedToken, stream.SourcePosition);
             }
             while (opStack.Count > 0)
             {
                 var op = opStack.Pop();
                 if (op == PAR_O)
-                    InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
+                    CompilerLog.AddError(") expected", ExceptionType.MissingParenthesis, stream.SourcePosition);
                 if (op == INDEXER_O)
-                    InfoProvider.AddError("`]` is missed", ExceptionType.Brace, stream.SourcePosition);
+                    CompilerLog.AddError(") expected", ExceptionType.Brace, stream.SourcePosition);
                 resultingExpression.Add(op);
             }
             return new Expression(resultingExpression, stream.SourcePosition);
@@ -761,18 +765,18 @@ namespace Translator
                 {
                     result.Left = makeASTNode(polish);
                     if (result.Left == null)
-                        InfoProvider.AddError($"Argument of {tok} is missing", ExceptionType.BadExpression, tok.Position);
+                        CompilerLog.AddError($"Argument of {tok} is missing", ExceptionType.BadExpression, tok.Position);
                 }
                 else if (!tok.Operation.IsUnary && tok.Operation.Type != OperationType.FunctionCall)
                 {
                     result.Right = makeASTNode(polish);
                     result.Left = makeASTNode(polish);
                     if (result.Left == null && result.Right == null)
-                        InfoProvider.AddError($"Both arguments of {tok} is missing", ExceptionType.BadExpression, tok.Position);
+                        CompilerLog.AddError($"Both arguments of {tok} is missing", ExceptionType.BadExpression, tok.Position);
                     else if (result.Left == null || result.Right == null)
-                        InfoProvider.AddError($"Argument of {tok} is missing", ExceptionType.BadExpression, tok.Position);
+                        CompilerLog.AddError($"Argument of {tok} is missing", ExceptionType.BadExpression, tok.Position);
                     else if (tok.Operation.Type == OperationType.Assign && result.Left.Token.IsConstant())
-                        InfoProvider.AddError("rvalue can't be on left side of assignment operator", ExceptionType.lValueExpected, tok.Position);
+                        CompilerLog.AddError("rvalue can't be on left side of assignment operator", ExceptionType.lValueExpected, tok.Position);
                 }
                 else // if(tok.Operation.Type == OperationType.FunctionCall)
                 {
@@ -780,9 +784,9 @@ namespace Translator
                     while (argCount-- != 0)
                         result.AddRight(makeASTNode(polish));
                     if (result.Left == null)
-                        InfoProvider.AddError("No function name defined", ExceptionType.FunctionName, tok.Position);
+                        CompilerLog.AddError("No function name defined", ExceptionType.FunctionName, tok.Position);
                     else if (!result.Left.Token.IsIdentifier())
-                        InfoProvider.AddError("Identifier expected as function name", ExceptionType.FunctionName, tok.Position);
+                        ;//CompilerLog.AddError("Identifier expected as function name", ExceptionType.FunctionName, tok.Position);
                 }
             }
 
@@ -833,7 +837,7 @@ namespace Translator
                 var ownerClass = owner.Type as ClassType; // TODO: Check
 
                 if (!member.Token.IsIdentifier())
-                    InfoProvider.AddError("Identifier expected", ExceptionType.InvalidMemberAccess, member.Token.Position);
+                    CompilerLog.AddError("Identifier expected", ExceptionType.InvalidMemberAccess, member.Token.Position);
 
                 // Field, property
                 if (paramList == null)
@@ -865,7 +869,7 @@ namespace Translator
                     //node.Type = getHightestType(node.Left, node.Right);
                 }
                 else // WTF. Can't be
-                    InfoProvider.AddError("Too many childrens in operator", ExceptionType.InternalError, node.Token.Position);
+                    CompilerLog.AddError("Too many childrens in operator", ExceptionType.InternalError, node.Token.Position);
             }
             else if (node.Token.IsConstant())
             {
@@ -904,7 +908,7 @@ namespace Translator
                     Console.WriteLine("\t\t{0}, {1} `{2}` of type `{3}` with params `{4}`", 
                                       method.Modifiers, method.Scope, method.Name, method.Type.ToString(), method.Parameters.ToString());
             }
-            InfoProvider.Print();
+            CompilerLog.Print();
         }
 
         public static bool IsPlainType(string type, bool includeVoid=false)
@@ -946,9 +950,9 @@ namespace Translator
                 if(token.IsConstant() || token.IsIdentifier())
 				{
                     if (lastToken.IsOneOf(PAR_C, INDEXER_C))
-						InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, stream.SourcePosition);
+						CompilerLog.AddError("Unexpected identifier after brace", ExceptionType.Brace, stream.SourcePosition);
                     if (lastToken.IsIdentifier())
-                        InfoProvider.AddError("Unexpected identifier", ExceptionType.BadExpression, stream.SourcePosition);
+                        CompilerLog.AddError("Unexpected identifier", ExceptionType.BadExpression, stream.SourcePosition);
                     resultingExpression.Add(token);
                     lastToken = token;
                 }
@@ -976,7 +980,7 @@ namespace Translator
                 else if (token == INDEXER_O)
 				{
                     if (lastToken.IsOp())
-						InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("[ unexpected", ExceptionType.Brace, stream.SourcePosition);
 					opStack.Push(token);
                     lastToken = token;
                 }
@@ -986,16 +990,16 @@ namespace Translator
                     // a b[c + 4] - 6 =
                     // a b c 4 + [] 6 - =
                     if (lastToken.IsOp())
-                        InfoProvider.AddError("Unexpected `]`", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("] unexpected", ExceptionType.Brace, stream.SourcePosition);
 
                     while (opStack.Count > 0 && opStack.Peek() != INDEXER_O)
                     {
 						if ((opStack.Peek() == PAR_O))
-							InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
+                            CompilerLog.AddError(") expected", ExceptionType.MissingParenthesis, stream.SourcePosition);
                         resultingExpression.Add(opStack.Pop());
                     }
                     if (opStack.Count == 0)
-                        InfoProvider.AddError("`[` is missed", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("[ expected", ExceptionType.Brace, stream.SourcePosition);
                     else
                         opStack.Pop();
                     token.Representation = "[]";
@@ -1017,14 +1021,14 @@ namespace Translator
                         functionArgCounter.Push(0);
                     }
                     else if (!lastToken.IsOp())
-						InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("Illegal (", ExceptionType.Brace, stream.SourcePosition);
 					opStack.Push(token);
 					lastToken = token;
                 }
                 else if (token == PAR_C)
 				{
 					if (lastToken.IsOp())
-                        InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, stream.SourcePosition);
+                        CompilerLog.AddError("Illegal )", ExceptionType.Brace, stream.SourcePosition);
                     while (opStack.Count > 0 && opStack.Peek() != PAR_O)
                     {
                         if (opStack.Peek().Operation.Type == OperationType.FunctionCall)
@@ -1037,14 +1041,14 @@ namespace Translator
                             resultingExpression.Add(opStack.Pop());
                     }
 					if (opStack.Count == 0)
-                        InfoProvider.AddError("`(` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
+                        CompilerLog.AddError("Expected (", ExceptionType.MissingParenthesis, stream.SourcePosition);
                     else
 						opStack.Pop();
                 }
                 else if(token == SEP)
                 {
 					if (!(lastToken.IsConstant() || lastToken.IsIdentifier() || lastToken == PAR_C || lastToken == INDEXER_C))
-                        InfoProvider.AddError("Unexpected comma", ExceptionType.UnexpectedComma, stream.SourcePosition);
+                        CompilerLog.AddError("Unexpected comma", ExceptionType.UnexpectedComma, stream.SourcePosition);
                     functionArgCounter.Push(functionArgCounter.Pop()+1);
                 }
 				//Console.Write("\tOp stack:\n\t");
@@ -1059,9 +1063,9 @@ namespace Translator
             {
 				var op = opStack.Pop();
 				if (op == PAR_O)
-					InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
+                    CompilerLog.AddError(") expected", ExceptionType.MissingParenthesis, stream.SourcePosition);
                 if (op == INDEXER_O)
-                    InfoProvider.AddError("`]` is missed", ExceptionType.Brace, stream.SourcePosition);
+                    CompilerLog.AddError("] expected", ExceptionType.Brace, stream.SourcePosition);
                 resultingExpression.Add(op);
 			}
             return new Expression(resultingExpression, stream.SourcePosition);
@@ -1086,14 +1090,14 @@ namespace Translator
 				result.Left = buildNode(rpn, position);
 
                 if (result.Left == null && result.Right == null)
-                    InfoProvider.AddError($"Both arguments of {tok} is missed", ExceptionType.BadExpression, position);
+                    CompilerLog.AddError($"Both arguments of {tok} is missed", ExceptionType.BadExpression, position);
                 else if (result.Left == null || result.Right == null)
-					InfoProvider.AddError($"Argument of {tok} is missed", ExceptionType.BadExpression, position);
+					CompilerLog.AddError($"Argument of {tok} is missed", ExceptionType.BadExpression, position);
                 else if (tok.Operation.Type == OperationType.Assign && result.Left.Token.IsConstant())
-					InfoProvider.AddError("rvalue can't be on left side of assignment operator", ExceptionType.lValueExpected, position);
+					CompilerLog.AddError("rvalue can't be on left side of assignment operator", ExceptionType.lValueExpected, position);
 				// Pascal specific
 				else if (result.Left.Token.Operation?.Type == OperationType.Assign || result.Right.Token.Operation?.Type == OperationType.Assign)
-					InfoProvider.AddError($"Assignment operator can be only as a root node", ExceptionType.BadExpression, position);
+					CompilerLog.AddError($"Assignment operator can be only as a root node", ExceptionType.BadExpression, position);
             }
 
             return result;

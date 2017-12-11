@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Translator
+namespace Lab4
 {
 
     /*
@@ -80,7 +80,7 @@ namespace Translator
         public List<string> Defines = new List<string>();
     }
 
-    public static class InfoProvider
+    public static class CompilerLog
     {
         public static event ErrorLimitReachedDelegate ErrorLimitReached;
 
@@ -114,29 +114,12 @@ namespace Translator
 
         public static void Print()
         {
-            if (InfoList.Count == 0)
-                Console.WriteLine("No errors");
             foreach (var i in InfoList)
             {
-                var color = Console.ForegroundColor;
-                switch (i.Type)
-                {
-                    case InfoType.Error:
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        break;
-                    case InfoType.Warning:
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        break;
-                    case InfoType.Info:
-                        Console.ForegroundColor = ConsoleColor.DarkGreen;
-                        break;
-                }
-                Console.Write(i.Type);
-                Console.ForegroundColor = ConsoleColor.DarkMagenta;
-                Console.WriteLine(" at " + i.Where);
-                Console.ForegroundColor = color;
-                Console.WriteLine("\t`{0}`:{1}", i.ExceptionType, i.What);
+                Console.WriteLine("{0}: {1}: {2}", i.Type, i.ExceptionType, i.What);
+                Console.WriteLine(i.Where);
             }
+            Console.WriteLine($"{InfoList.Count} errors");
         }
     }
 

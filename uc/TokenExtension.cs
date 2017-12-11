@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Translator
+namespace Lab4
 {
     public static class TokenExtension
     {
@@ -8,7 +8,7 @@ namespace Translator
         {
             var id = toks.Current;
             if (id.Type != TokenType.Identifier)
-                InfoProvider.AddError("Identifier expected", ExceptionType.IllegalToken, toks.SourcePosition);
+                CompilerLog.AddError("Identifier expected", ExceptionType.IllegalToken, toks.SourcePosition);
             return id.ToString();
         }
 
@@ -16,7 +16,7 @@ namespace Translator
         {
             var id = toks.Next();
             if (id.Type != TokenType.Identifier)
-                InfoProvider.AddError("Identifier expected", ExceptionType.IllegalToken, toks.SourcePosition);
+                CompilerLog.AddError("Identifier expected", ExceptionType.IllegalToken, toks.SourcePosition);
             return id.ToString();
         }
 
@@ -53,13 +53,13 @@ namespace Translator
         public static void CheckNext(this TokenStream toks, string str, ExceptionType extype)
         {
             if(!toks.IsNext(str))
-                InfoProvider.AddError("`"+str+"` expected", extype, toks.SourcePosition);
+                CompilerLog.AddError("`"+str+"` expected", extype, toks.SourcePosition);
         }
 
         public static void Check(this TokenStream toks, string str, ExceptionType extype)
         {
             if(!toks.Is(str))
-                InfoProvider.AddError("`"+str+"` expected", extype, toks.SourcePosition);
+                CompilerLog.AddError("`"+str+"` expected", extype, toks.SourcePosition);
         }
 
         public static string CollectUntil(this TokenStream toks, TokenType tokType, bool include=true)
@@ -112,7 +112,7 @@ namespace Translator
         private static IType readType(TokenStream toks, string identifier, bool includeVoid)
         {
             if(identifier == "void" && !includeVoid)
-                InfoProvider.AddError("Unexpected `void` type", ExceptionType.IllegalType, toks.SourcePosition);
+                CompilerLog.AddError("Unexpected `void` type", ExceptionType.IllegalType, toks.SourcePosition);
 
             int dimens = 0;
 
@@ -129,7 +129,7 @@ namespace Translator
             }
 
             if(identifier == "void" && dimens > 0)
-                InfoProvider.AddError("Unexpected `void` typed array", ExceptionType.IllegalType, toks.SourcePosition);
+                CompilerLog.AddError("Unexpected `void` typed array", ExceptionType.IllegalType, toks.SourcePosition);
 
             IType result;
             if(Compiler.IsPlainType(identifier))

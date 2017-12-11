@@ -28,7 +28,7 @@ using System.IO;
 using System.Globalization;
 using uc;
 
-namespace Translator
+namespace Lab4
 {
     //delegate void NewLineDelegate(TokenStream ts);
 

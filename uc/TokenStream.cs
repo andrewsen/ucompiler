@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using uc;
 
-namespace Translator
+namespace Lab4
 {
     public class SourcePosition
     {
@@ -25,7 +25,7 @@ namespace Translator
 
         public override string ToString()
         {
-            return string.Format("({0}:{1}:{2}): `{3}`", File, LineNum, TokenPos, Line);
+            return string.Format("(`{0}`\n{1}^", Line, new string('-', TokenPos));
         }
     }
 
@@ -253,7 +253,7 @@ namespace Translator
 
                 if(isValidIdentStartSymbol(source[pos]))
                 {
-                    InfoProvider.AddError("Illegal numeric identifier", ExceptionType.NonNumericValue, SourcePosition);
+                    CompilerLog.AddError("Illegal numeric identifier", ExceptionType.NonNumericValue, SourcePosition);
                 }
                 cur.Representation = temp;
 			}
@@ -333,7 +333,7 @@ namespace Translator
             }
             if(cur.Type == TokenType.Unknown)
             {
-                InfoProvider.AddError($"Unknown symbol `{source[pos]}`", ExceptionType.IllegalToken, SourcePosition);
+                CompilerLog.AddError($"Unknown symbol `{source[pos]}`", ExceptionType.IllegalToken, SourcePosition);
                 ++pos;
             }
 

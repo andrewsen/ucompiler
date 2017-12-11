@@ -1,6 +1,6 @@
 ﻿using NUnit.Framework;
 using System;
-using Translator;
+using Lab4;
 
 namespace ucTest
 {
@@ -72,7 +72,7 @@ namespace ucTest
             var root = compiler.expressionToAST(expression);
             Assert.NotNull(root, "Root is null");
 
-            InfoProvider.Print();
+            CompilerLog.Print();
         }
     }
 }

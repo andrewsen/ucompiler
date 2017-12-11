@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Translator
+namespace Lab4
 {
     public interface IType : IEquatable<IType>
     {
@@ -145,8 +145,9 @@ namespace Translator
 
         public INamedDataElement FindMethod(Token token, List<IType> paramList)
         {
-            var methods = SymbolTable.Methods;
-            var suitted = methods.Where(m => m.Name == token.Representation && m.ParametersFitsArgs(paramList));
+            //var methods = SymbolTable.Methods;
+            //var suitted = methods.Where(m => m.Name == token.Representation && m.ParametersFitsArgs(paramList));
+            return null;
         }
     }
 

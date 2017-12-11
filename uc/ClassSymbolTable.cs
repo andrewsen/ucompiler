@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Translator
+namespace Lab4
 {
 	public class ClassSymbolTable
 	{
@@ -21,7 +21,7 @@ namespace Translator
                 AddProperty(element as Property);
             else if (element is Field)
                 AddField(element as Field);
-			InfoProvider.AddError("WTF. Unsupported class element", ExceptionType.ImpossibleError, element.DeclarationPosition);
+			CompilerLog.AddError("WTF. Unsupported class element", ExceptionType.ImpossibleError, element.DeclarationPosition);
 		}
 
         public void AddField(Field field)
@@ -67,8 +67,8 @@ namespace Translator
 
 		private void reportInUse(IClassElement element)
 		{
-			InfoProvider.AddError("Identifier is already in use", ExceptionType.IdentifierInUse, element.DeclarationPosition);
-			InfoProvider.AddError("previously declared here", ExceptionType.AdditionalInfo, element.DeclarationPosition);
+			CompilerLog.AddError("Identifier is already in use", ExceptionType.IdentifierInUse, element.DeclarationPosition);
+			CompilerLog.AddError("previously declared here", ExceptionType.AdditionalInfo, element.DeclarationPosition);
 		}
 	}
 }

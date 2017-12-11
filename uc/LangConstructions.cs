@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 
 
-namespace Translator
+namespace Lab4
 {
     public class CommonClassEntry
     {

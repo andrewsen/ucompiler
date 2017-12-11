@@ -21,10 +21,10 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using Translator;
+using Lab4;
 using System.Globalization;
 
-namespace Translator
+namespace Lab4
 {
     public struct AttributeData
     {
@@ -131,7 +131,7 @@ namespace Translator
 
             aobj.Name = ts.Next();
             if (!ts.Current.IsIdentifier())
-                InfoProvider.AddError("Wrong name `" + aobj.Name + "`", ExceptionType.AttributeException, ts.SourcePosition);
+                CompilerLog.AddError("Wrong name `" + aobj.Name + "`", ExceptionType.AttributeException, ts.SourcePosition);
                 //throw new AttributeException(aobj.Name, "Wrong name");
             if (ts.IsNext(";")) // Like "RuntimeInternal;"
                 return aobj;
@@ -141,7 +141,7 @@ namespace Translator
                 {
                     aobj.Name += ":" + ts.Next();
                     if (!ts.Current.IsIdentifier())
-                        InfoProvider.AddError("Wrong name `" + aobj.Name + "`", ExceptionType.AttributeException, ts.SourcePosition);
+                        CompilerLog.AddError("Wrong name `" + aobj.Name + "`", ExceptionType.AttributeException, ts.SourcePosition);
                 } while(ts.IsNext(":"));
                 //_ts.PushBack();
             }
@@ -201,7 +201,7 @@ namespace Translator
                         ad.Type = DataTypes.String;
                         break;
                     default:
-                        InfoProvider.AddError("Unsupported data type: " + type.ToString().Replace("DataTypes.",""),
+                        CompilerLog.AddError("Unsupported data type: " + type.ToString().Replace("DataTypes.",""),
                             ExceptionType.AttributeException, ts.SourcePosition);
                         break;
                 }
@@ -211,7 +211,7 @@ namespace Translator
                 if(ts.IsNext(")"))
                     break;
                 else if(!ts.Is(","))
-                    InfoProvider.AddError("Unexpected character " + ts, ExceptionType.AttributeException, ts.SourcePosition);
+                    CompilerLog.AddError("Unexpected character " + ts, ExceptionType.AttributeException, ts.SourcePosition);
                 ts.Next();
 
             }
