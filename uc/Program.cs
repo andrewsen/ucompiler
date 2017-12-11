@@ -17,9 +17,9 @@ namespace Translator
                 Environment.Exit(1);
             };
 			Compiler compiler = new Compiler(new CompilerConfig() {
-                Sources = new System.Collections.Generic.List<string>() { args[0] }
+                Sources = new System.Collections.Generic.List<string>() { "./sp.sc" }
             });
-            var gStream = new TokenStream(File.ReadAllText(args[0]), args[0]);
+            var gStream = new TokenStream(File.ReadAllText("./sp.sc"), "./sp.sc");
 
             CodeBlock rootBlock = new CodeBlock();
             gStream.Next();
