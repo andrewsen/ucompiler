@@ -512,26 +512,30 @@ namespace Translator
             // Shit. Rewrite
             var ifExpr = new If();
 
-            gStream.CheckNext(PAR_O, ExceptionType.MissingParenthesis);
+            //gStream.CheckNext(PAR_O, ExceptionType.MissingParenthesis);
 
             string collectedExpr = "";
             int parCounter = 1;
-            while(parCounter > 0)
+            while(gStream.Current.Representation.ToLower() != "then")
             {
                 if (gStream.Eof || gStream.Next().Type == TokenType.EOF)
                 {
-                    InfoProvider.AddError("Closing bracket expected `)`", ExceptionType.Brace, gStream.SourcePosition, true);
+                    InfoProvider.AddError("Flow error", ExceptionType.Brace, gStream.SourcePosition, true);
                 }
-                if (gStream.Is(PAR_O))
-                    parCounter++;
-                else if (gStream.Is(PAR_C))
-                {
-                    parCounter--;
-                    if (parCounter == 0)
-                        break;
-                }
+                //if (gStream.Is(PAR_O))
+                //parCounter++;
+                if (gStream.Current.Representation.ToLower() == "then")
+                    break;
+                    //parCounter++;
+                //else if (gStream.Is(PAR_C))
+                //{
+                    //parCounter--;
+                    //if (parCounter == 0)
+                        //break;
+                //}
                 collectedExpr += gStream.Current.Representation + " ";
             }
+            gStream.PushBack();
             if (collectedExpr.Length == 0)
                 InfoProvider.AddError("Empty statement", ExceptionType.BadExpression, gStream.SourcePosition);
 
@@ -568,6 +572,8 @@ namespace Translator
                 var token = gStream.Current;
                 if(token.IsConstant() || token.IsIdentifier())
                 {
+                    if (token.Representation.ToLower() == "end")
+                        break;
                     if (isLastBrace)
                         InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, gStream.SourcePosition);
                     if (isLastIdent)
@@ -666,6 +672,8 @@ namespace Translator
         public Node buildAST(Expression expr)
         {
             // a b c * 4 e * + =
+            if (expr.Tokens.Count == 0)
+                return null;
             var count = expr.Tokens.Count;
             return buildNode(new Stack<Token>(expr.Tokens), expr.SourcePosition);
         }

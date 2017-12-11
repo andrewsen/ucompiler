@@ -48,7 +48,7 @@ namespace Translator
         public Statement(Node root)
         {
             Root = root;
-            if (!Root.Token.IsOp() || Root.Token.Operation.Type != OperationType.Assign)
+            if (Root != null && (!Root.Token.IsOp() || Root.Token.Operation.Type != OperationType.Assign))
                 InfoProvider.AddError("Assignment expected", ExceptionType.IllegalType, new SourcePosition("", Root.Token.Line, Root.Token.Position, "<stdin>"));
         }
     }

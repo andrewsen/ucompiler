@@ -74,6 +74,8 @@ namespace Translator
 
         public static void PrintNode(Node node, int level)
         {
+            if (node == null)
+                return;
             Console.Write(new string(' ', level) + node.Token.ToString());
             if(node.Left != null)
             {
