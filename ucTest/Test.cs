@@ -27,37 +27,37 @@ namespace ucTest
         [Test]
         public void TestExpression1()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr1, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.evalExpression(new Reader(testExpr1, "<test>"), ParsingPolicy.Semicolon));
         }
 
         [Test]
         public void TestExpression2()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr2, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.evalExpression(new Reader(testExpr2, "<test>"), ParsingPolicy.Semicolon));
         }
 
         [Test]
         public void TestExpression3()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr3, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.evalExpression(new Reader(testExpr3, "<test>"), ParsingPolicy.Semicolon));
         }
 
         [Test]
         public void TestExpression4()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr4, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.evalExpression(new Reader(testExpr4, "<test>"), ParsingPolicy.Semicolon));
         }
 
         [Test]
         public void TestExpression5()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr5, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.evalExpression(new Reader(testExpr5, "<test>"), ParsingPolicy.Semicolon));
         }
 
         [Test]
         public void TestExpression6()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr6, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.evalExpression(new Reader(testExpr6, "<test>"), ParsingPolicy.Semicolon));
         }
 
         private void PrintExpression(Expression expression)

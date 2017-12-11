@@ -106,7 +106,8 @@ namespace Lab4
         NotImplemented,
         FunctionName,
         InvalidMemberAccess,
-        InternalError
+        InternalError,
+        AssignmentExpected
     }
 
     public enum DeclarationForm

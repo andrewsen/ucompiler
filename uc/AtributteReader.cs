@@ -110,10 +110,10 @@ namespace Lab4
 
     public class AttributeReader
     {
-        private TokenStream ts;
+        private Reader ts;
         private AttributeObject aobj = new AttributeObject();
 
-        internal AttributeReader(TokenStream ts)
+        internal AttributeReader(Reader ts)
         {
             this.ts = ts;
         }

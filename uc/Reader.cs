@@ -25,11 +25,11 @@ namespace Lab4
 
         public override string ToString()
         {
-            return string.Format("(`{0}`\n{1}^", Line, new string('-', TokenPos));
+            return string.Format("`{0}`\n{1}^", Line, new string('-', TokenPos));
         }
     }
 
-    public class TokenStream
+    public class Reader
     {
 
         const string UINT_SUFFIX = "u";
@@ -44,7 +44,7 @@ namespace Lab4
         private List<int> lines;
         private Token cur, prev;
 
-        public TokenStream(string source, string file)
+        public Reader(string source, string file)
         {
             this.source = source + "\n";
             this.file = file;
@@ -84,10 +84,10 @@ namespace Lab4
 
         public bool Eof => cur.Type == TokenType.EOF;
 
-        public TokenStream Fork()
+        public Reader Fork()
         {
             // TODO: Andrew Senko: Test. Maybe we need to copy cour and prev Tokens
-            var stream = new TokenStream(source, file)
+            var stream = new Reader(source, file)
             {
                 pos = this.pos,
                 prevPos = this.prevPos,
@@ -104,7 +104,7 @@ namespace Lab4
             return Next().Type == TokenType.EOF;
         }
 
-        public TokenStream Pass()
+        public Reader Pass()
         {
             Next();
             return this;

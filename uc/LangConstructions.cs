@@ -138,6 +138,6 @@ namespace Lab4
         /// <summary>
         /// Points on position before `{` in full form or after `->` in short one
         /// </summary>
-        public TokenStream BodyStream;
+        public Reader BodyStream;
     }
 }

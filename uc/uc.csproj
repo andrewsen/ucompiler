@@ -40,7 +40,7 @@
     <Compile Include="Common.cs" />
     <Compile Include="Compiler.cs" />
     <Compile Include="Enums.cs" />
-    <Compile Include="TokenStream.cs" />
+    <Compile Include="Reader.cs" />
     <Compile Include="DataType.cs" />
     <Compile Include="AtributteReader.cs" />
     <Compile Include="LangConstructions.cs" />

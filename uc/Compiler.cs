@@ -52,7 +52,7 @@ namespace Lab4
 
         private void parseGlobalScope(string src)
         {
-            TokenStream gStream = new TokenStream(File.ReadAllText(src), src);
+            Reader gStream = new Reader(File.ReadAllText(src), src);
 
             while (!gStream.NextEof())
             {
@@ -77,7 +77,7 @@ namespace Lab4
             }
         }
 
-        private void parseAttribute(TokenStream gStream)
+        private void parseAttribute(Reader gStream)
         {
             AttributeReader reader = new AttributeReader(gStream);
 
@@ -201,12 +201,12 @@ namespace Lab4
             }
         }
 
-        private void parseImport(TokenStream gStream)
+        private void parseImport(Reader gStream)
         {
             throw new NotImplementedException();
         }
 
-        private void parseClass(TokenStream gStream, Scope classScope)
+        private void parseClass(Reader gStream, Scope classScope)
         {
             ClassType clazz = new ClassType(gStream.GetIdentifierNext());
 			clazz.DeclarationPosition = gStream.SourcePosition;
@@ -272,7 +272,7 @@ namespace Lab4
             classList.Add(clazz);
         }
 
-        private Field parseField(CommonClassEntry entry, TokenStream gStream)
+        private Field parseField(CommonClassEntry entry, Reader gStream)
         {
             Field field = new Field();
             if (gStream.Is(STAT_SEP) && entry.Modifiers.HasFlag(ClassEntryModifiers.Const))
@@ -287,7 +287,7 @@ namespace Lab4
             return field;
         }
 
-        private Property parseProperty(CommonClassEntry entry, TokenStream gStream)
+        private Property parseProperty(CommonClassEntry entry, Reader gStream)
         {
             Property property = new Property();
             property.FromClassEntry(entry);
@@ -330,7 +330,7 @@ namespace Lab4
             return property;
         }
 
-        private Method parsePropertyFunction(CommonClassEntry entry, TokenStream gStream)
+        private Method parsePropertyFunction(CommonClassEntry entry, Reader gStream)
         {
             Method function = new Method();
             function.FromClassEntry(entry);
@@ -347,7 +347,7 @@ namespace Lab4
             return function;
         }
 
-        private Method parseMethod(CommonClassEntry entry, TokenStream gStream)
+        private Method parseMethod(CommonClassEntry entry, Reader gStream)
         {
             Method method = new Method();
             method.FromClassEntry(entry);
@@ -378,7 +378,7 @@ namespace Lab4
             return method;
         }
 
-        private ParameterList readParams(TokenStream gStream)
+        private ParameterList readParams(Reader gStream)
         {
             var plist = new ParameterList();
             //gStream.Next();
@@ -406,7 +406,7 @@ namespace Lab4
             return plist;
         }
 
-        private CommonClassEntry readCommonClassEntry(TokenStream gStream)
+        private CommonClassEntry readCommonClassEntry(Reader gStream)
         {               
             CommonClassEntry entry = new CommonClassEntry();
 
@@ -422,7 +422,7 @@ namespace Lab4
             return entry;
         }
 
-        private Scope readScope(TokenStream gStream)
+        private Scope readScope(Reader gStream)
         {
             var token = gStream.Next();
             Scope scope = Scope.Private;
@@ -444,7 +444,7 @@ namespace Lab4
             return scope;
         }
 
-        private ClassEntryModifiers readModifiers(TokenStream gStream)
+        private ClassEntryModifiers readModifiers(Reader gStream)
         {
             // [static [native|const]]
             var token = gStream.Next();
@@ -480,7 +480,7 @@ namespace Lab4
                 CompilerLog.AddError("Short form is unsupported now", ExceptionType.NotImplemented, method.DeclarationPosition);
         }
 
-        private CodeBlock evalBlock(CodeBlock parent, TokenStream lStream)
+        private CodeBlock evalBlock(CodeBlock parent, Reader lStream)
         {
             CodeBlock block = new CodeBlock(parent);
 
@@ -515,7 +515,7 @@ namespace Lab4
             return block;
         }
 
-        private void evalStatement(CodeBlock parent, TokenStream lStream)
+        private void evalStatement(CodeBlock parent, Reader lStream)
         {
             if (isRegisteredType(lStream.Current))
                 evalLocalVarDeclaration(parent, lStream);
@@ -526,12 +526,12 @@ namespace Lab4
             //assignTypes(rootNode, parent);
         }
 
-        private void evalLocalVarDeclaration(CodeBlock parent, TokenStream lStream)
+        private void evalLocalVarDeclaration(CodeBlock parent, Reader lStream)
         {
 
         }
 
-        public Expression evalExpression(TokenStream stream, ParsingPolicy parsingPolicy = ParsingPolicy.Brackets)
+        public Expression evalExpression(Reader stream, ParsingPolicy parsingPolicy = ParsingPolicy.Brackets)
         {
             // TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
 
@@ -749,7 +749,10 @@ namespace Lab4
 
         public Node expressionToAST(Expression expr)
         {
-            return makeASTNode(new Stack<Token>(expr.Tokens));
+            var root = makeASTNode(new Stack<Token>(expr.Tokens));
+            if (!root.Token.IsOp() || root.Token.Operation.Type != OperationType.Assign)
+                CompilerLog.AddError("Assignment expected", ExceptionType.AssignmentExpected, root.Token.Position);
+            return root;
         }
 
         private Node makeASTNode(Stack<Token> polish)
@@ -929,7 +932,7 @@ namespace Lab4
         //
 
         [Obsolete]
-        public Expression parseExpression(TokenStream stream)
+        public Expression parseExpression(Reader stream)
         {
 			// TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
 
@@ -1074,7 +1077,10 @@ namespace Lab4
         public Node buildAST(Expression expr)
         {
             // a b c * 4 e * + =
-            return buildNode(new Stack<Token>(expr.Tokens), expr.SourcePosition);
+            var root = buildNode(new Stack<Token>(expr.Tokens), expr.SourcePosition);
+            if(!root.Token.IsOp() || root.Token.Operation.Type != OperationType.Assign)
+                CompilerLog.AddError("Assignment expected", ExceptionType.AssignmentExpected, root.Token.Position);
+            return root;
         }
 
         public Node buildNode(Stack<Token> rpn, SourcePosition position)

@@ -4,7 +4,7 @@ namespace Lab4
 {
     public static class TokenExtension
     {
-        public static string GetIdentifier(this TokenStream toks)
+        public static string GetIdentifier(this Reader toks)
         {
             var id = toks.Current;
             if (id.Type != TokenType.Identifier)
@@ -12,7 +12,7 @@ namespace Lab4
             return id.ToString();
         }
 
-        public static string GetIdentifierNext(this TokenStream toks)
+        public static string GetIdentifierNext(this Reader toks)
         {
             var id = toks.Next();
             if (id.Type != TokenType.Identifier)
@@ -20,49 +20,49 @@ namespace Lab4
             return id.ToString();
         }
 
-        public static bool Is(this TokenStream toks, string str)
+        public static bool Is(this Reader toks, string str)
         {
             return toks.Current == str;
         }
 
-        public static bool Is(this TokenStream toks, string str, TokenType tokType)
+        public static bool Is(this Reader toks, string str, TokenType tokType)
         {
             return toks.Current == str && toks.Current.Type == tokType;
         }
 
-        public static bool Is(this TokenStream toks, string str, ConstantType constType)
+        public static bool Is(this Reader toks, string str, ConstantType constType)
         {
             return toks.Current == str && toks.Current.ConstType == constType;
         }
 
-        public static bool IsNext(this TokenStream toks, string str)
+        public static bool IsNext(this Reader toks, string str)
         {
             return toks.Next() == str;
         }
 
-        public static bool IsNext(this TokenStream toks, string str, TokenType tokType)
+        public static bool IsNext(this Reader toks, string str, TokenType tokType)
         {
             return toks.Next() == str && toks.Current.Type == tokType;
         }
 
-        public static bool IsNext(this TokenStream toks, string str, ConstantType constType)
+        public static bool IsNext(this Reader toks, string str, ConstantType constType)
         {
             return toks.Next() == str && toks.Current.ConstType == constType;
         }
 
-        public static void CheckNext(this TokenStream toks, string str, ExceptionType extype)
+        public static void CheckNext(this Reader toks, string str, ExceptionType extype)
         {
             if(!toks.IsNext(str))
                 CompilerLog.AddError("`"+str+"` expected", extype, toks.SourcePosition);
         }
 
-        public static void Check(this TokenStream toks, string str, ExceptionType extype)
+        public static void Check(this Reader toks, string str, ExceptionType extype)
         {
             if(!toks.Is(str))
                 CompilerLog.AddError("`"+str+"` expected", extype, toks.SourcePosition);
         }
 
-        public static string CollectUntil(this TokenStream toks, TokenType tokType, bool include=true)
+        public static string CollectUntil(this Reader toks, TokenType tokType, bool include=true)
         {
             string result = "";
 
@@ -80,7 +80,7 @@ namespace Lab4
             return result + toks.Current.Representation;
         }
 
-        public static string CollectNextUntil(this TokenStream toks, TokenType tokType, bool include = true)
+        public static string CollectNextUntil(this Reader toks, TokenType tokType, bool include = true)
         {
             string result = "";
 
@@ -97,19 +97,19 @@ namespace Lab4
             return result + toks.Current.Representation;
         }
 
-        public static IType CurrentType(this TokenStream toks, bool includeVoid) 
+        public static IType CurrentType(this Reader toks, bool includeVoid) 
         {
             string identifier = toks.GetIdentifier();
             return readType(toks, identifier, includeVoid);
         }
 
-        public static IType NextType(this TokenStream toks, bool includeVoid)
+        public static IType NextType(this Reader toks, bool includeVoid)
         {
             string identifier = toks.GetIdentifierNext();
             return readType(toks, identifier, includeVoid);
         }
 
-        private static IType readType(TokenStream toks, string identifier, bool includeVoid)
+        private static IType readType(Reader toks, string identifier, bool includeVoid)
         {
             if(identifier == "void" && !includeVoid)
                 CompilerLog.AddError("Unexpected `void` type", ExceptionType.IllegalType, toks.SourcePosition);
