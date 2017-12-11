@@ -8,13 +8,15 @@ namespace Translator
 {
     public class SourcePosition
     {
-        public string File;
-        public string Line;
-        public int LineNum;
-        public int TokenPos;
+        public readonly string Source;
+        public readonly string File;
+        public readonly string Line;
+        public readonly int LineNum;
+        public readonly int TokenPos;
 
-        public SourcePosition(string line, int lineNum, int pos, string file)
+        public SourcePosition(string source, string line, int lineNum, int pos, string file)
         {
+            Source = source;
             Line = line;
             LineNum = lineNum;
             TokenPos = pos;
@@ -35,12 +37,12 @@ namespace Translator
         const string LONG_SUFFIX = "l";
         const string FLOAT_SUFFIX = "f";
 
-        string source;
-        string file;
-        int prevPos;
-        int pos;
-        List<int> lines;
-        Token cur, prev;
+        private readonly string source;
+        private readonly string file;
+        private int prevPos;
+        private int pos;
+        private List<int> lines;
+        private Token cur, prev;
 
         public TokenStream(string source, string file)
         {
@@ -54,6 +56,12 @@ namespace Translator
             lines.Add(0);
         }
 
+        public string Line => LineAt(lines.Last());
+
+        public int LineNum => lines.Count;
+
+        public int LinePosition => pos - lines.Last();
+
         public int TokenPosition
         {
             get
@@ -66,39 +74,30 @@ namespace Translator
             }
         }
 
-        public string Line
+		public SourcePosition SourcePosition
         {
             get
             {
-                return LineAt(lines.Last());
-            }
-        }
-
-        public int LineNum
-        {
-            get
-            {
-                return lines.Count;
-            }
-        }
-
-        public int LinePosition
-        {
-            get
-            {
-                return pos - lines.Last();
-            }
-        }
-
-        public SourcePosition SourcePosition
-        {
-            get
-            {
-                return new SourcePosition(Line, LineNum, LinePosition, file);
+                return new SourcePosition(source, Line, LineNum, LinePosition, file);
             }
         }
 
         public bool Eof => cur.Type == TokenType.EOF;
+
+        public TokenStream Fork()
+        {
+            // TODO: Andrew Senko: Test. Maybe we need to copy cour and prev Tokens
+            var stream = new TokenStream(source, file)
+            {
+                pos = this.pos,
+                prevPos = this.prevPos,
+                prev = this.prev,
+                cur = this.cur,
+                lines = new List<int>(lines),
+            };
+
+            return stream;
+        }
 
         public bool NextEof()
         {
@@ -170,6 +169,8 @@ namespace Translator
                 ++pos;
                 return nextToken();
             }
+
+            cur.Position = SourcePosition;
 
             if (isValidIdentStartSymbol(source[pos]))
             {
@@ -336,8 +337,6 @@ namespace Translator
                 ++pos;
             }
 
-            cur.Line = lines.Last();//6[lines.Count-1];
-            cur.Position = pos - cur.Line;
             return cur;
         }
 

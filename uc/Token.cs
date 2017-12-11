@@ -40,8 +40,7 @@ namespace Translator
         public ConstantType ConstType;
         public Operation Operation;
         public string Representation;
-        public int Line;
-        public int Position;
+        public SourcePosition Position;
 
         public string Quoted
         {
@@ -135,6 +134,11 @@ namespace Translator
         public bool IsOp()
         {
             return Type == TokenType.Operator;
+        }
+
+        public bool IsOp(OperationType type)
+        {
+            return Type == TokenType.Operator && Operation.Type == type;
         }
 
         public bool IsDelim()

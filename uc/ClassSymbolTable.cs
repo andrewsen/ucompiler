@@ -53,7 +53,17 @@ namespace Translator
 				reportInUse(element);
             }
             methods.Add(method);
-		}
+        }
+
+        public IClassElement Find(string name)
+        {
+            return fields.Find(f => f.Name == name) ?? properties.Find(p => p.Name == name);
+        }
+
+        public bool Contains(string name)
+        {
+            return fields.Exists(f => f.Name == name) || properties.Exists(p => p.Name == name) || methods.Exists(m => m.Name == name);
+        }
 
 		private void reportInUse(IClassElement element)
 		{

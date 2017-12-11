@@ -4,8 +4,9 @@ using System;
 namespace Translator
 {
 	public static class Alphabet
-	{
-		public const string IF = "if";
+    {
+        public const string VAR = "var";
+        public const string IF = "if";
 		public const string ELSE = "else";
 		public const string FOR = "for";
 		public const string WHILE = "while";

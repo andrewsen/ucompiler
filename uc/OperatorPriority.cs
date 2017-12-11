@@ -13,9 +13,39 @@ namespace uc
         public int Priority;
         public int ArgumentCount;
 
-        private Operation() 
+        // TODO: Will be redunant in future
+        public static Operation Cast
+        {
+            get
+            {
+                return new Operation
+                {
+                    Type = OperationType.Cast,
+                    Priority = 12,
+                };
+            }
+        }
+
+        private Operation()
         {
             Association = Association.Left;
+        }
+
+        public bool Is(params OperationType[] operations)
+        {
+            return operations.Contains(Type);
+        }
+
+        public bool IsUnary
+        {
+            get
+            {
+                return new List<OperationType> 
+                { 
+                    OperationType.Inc, OperationType.Dec, OperationType.PreInc, OperationType.PreDec, OperationType.PostInc, OperationType.PostDec, 
+                    OperationType.Not, OperationType.Inv, OperationType.UnaryPlus, OperationType.UnaryMinus
+                }.Contains(Type);
+            }
         }
 
         public static Operation From(string view)
@@ -24,10 +54,14 @@ namespace uc
 
             switch(view)
             {
-				case "+":
-					result.Type = OperationType.Add;
-					result.Priority = 10;
-					break;
+                case ".":
+                    result.Type = OperationType.MemberAccess;
+                    result.Priority = 12; // TODO: Fix
+                    break;
+                case "+":
+                    result.Type = OperationType.Add;
+                    result.Priority = 10;
+                    break;
 				case "-":
 					result.Type = OperationType.Sub;
 					result.Priority = 10;

@@ -11,11 +11,12 @@ namespace Translator
         public ClassEntryModifiers Modifiers;
         public string Name;
         public SourcePosition DeclarationPosition;
+        public ClassType Class;
 
         public bool HasVoidType => Type.Type == DataTypes.Void;
     }
 
-    public interface IClassElement
+    public interface INamedDataElement
     {
         string Name
         {
@@ -36,10 +37,39 @@ namespace Translator
         }
     }
 
-    public class Variable
+    public interface IClassElement : INamedDataElement
     {
-        public string Name;
-        public IType Type;
+        
+    }
+
+    public class Variable : INamedDataElement
+    {
+        public string Name
+        {
+            get;
+            set;
+        }
+
+        public IType Type
+        {
+            get;
+            set;
+        }
+
+        public SourcePosition DeclarationPosition
+        {
+            get;
+            set;
+        }
+
+        public static bool operator!=(Variable v1, Variable v2) => !(v1 == v2);
+
+        public static bool operator==(Variable v1, Variable v2)
+        {
+            if (v1.Name != v2.Name)
+                return false;
+            return v1.Type.Equals(v2.Type);
+        }
     }
 
     public class ParameterList : List<Variable>
@@ -60,6 +90,7 @@ namespace Translator
         public Scope Scope;
 		public AttributeList AttributeList;
 		public ClassEntryModifiers Modifiers;
+        public ClassType Class;
 		public int InitialExpressionPosition;
 
         public string Name
@@ -88,6 +119,7 @@ namespace Translator
             this.Modifiers = entry.Modifiers;
             this.Scope = entry.Scope;
             this.DeclarationPosition = entry.DeclarationPosition;
+            this.Class = entry.Class;
         }
     }
 
@@ -99,8 +131,13 @@ namespace Translator
 
     public class Method : Field
     {
+		public DeclarationForm DeclarationForm;
         public ParameterList Parameters;
         public CodeBlock Body;
-        public int Begin;
+
+        /// <summary>
+        /// Points on position before `{` in full form or after `->` in short one
+        /// </summary>
+        public TokenStream BodyStream;
     }
 }

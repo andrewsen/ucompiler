@@ -8,10 +8,18 @@ namespace Translator
         Operator, Constant, Unknown, EOF, Endl, Semicolon,
     }
 
-    public enum OperationType 
+    [Flags]
+    public enum OperationType
     {
+        Inc = 0x0, // 000
+        Dec = 0x1, // 001
+        PreMask = 0x2, // 100
+        PreInc = 0x2, // 010
+        PreDec = 0x3, // 011
+        PostMask = 0x4, // 100
+        PostInc = 0x4,  // 100
+        PostDec = 0x5,  // 101
         UnaryPlus, UnaryMinus,
-        Inc, Dec, PreInc, PreDec, PostInc, PostDec,
         Add, Sub, Mul, Div, Mod, 
         BinOr, BinAnd, Xor, Inv, ShiftLeft, ShiftRight,
         Not, And, Or, Equals, NotEquals, GreaterEquals, LowerEquals, Greater, Lower,
@@ -22,6 +30,7 @@ namespace Translator
         Assign,
         AssignAdd, AssignSub, AssignMul, AssignDiv, AssignMod, AssignBinOr, AssignBinAnd, AssignXor, AssignShiftLeft, AssignShiftRight,
         FunctionCall,
+        MemberAccess,
     }
 
     public enum Association
@@ -29,14 +38,14 @@ namespace Translator
         Left, Right
     }
 
-    public enum ConstantType : int {
+    // NOTE: Andrew Senko: ConstantType and DataTypes must stay in same numerical order
+    public enum ConstantType : byte {
         Char, UI8, I8, UI16, I16, UI32, I32, UI64, I64, Double, String, Null, Bool
     }
 
     public enum DataTypes : byte
     {
-        //Null, Void, Byte, Char, Short, Uint, Int, Ulong, Long, Bool, Double, String, Array, Class
-        Void, Char, UI8, I8, UI16, I16, UI32, I32, UI64, I64, Double, String, Null, Bool, Object, Array, Class
+        Char, UI8, I8, UI16, I16, UI32, I32, UI64, I64, Double, String, Null, Bool, Void, Object, Array, Class
     }
 
     public enum Scope : byte
@@ -92,7 +101,21 @@ namespace Translator
         MultipleSetters,
         MissingParenthesis,
         SemicolonExpected,
-        UnexpectedComma
+        UnexpectedComma,
+        UnexpectedToken,
+        NotImplemented,
+        FunctionName,
+        InvalidMemberAccess
+    }
+
+    public enum DeclarationForm
+    {
+        Full, Short
+    }
+
+    public enum ParsingPolicy
+    {
+        Brackets, Semicolon, Both
     }
 
     [Flags]

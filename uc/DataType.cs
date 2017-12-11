@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Translator
 {
-    public interface IType
+    public interface IType : IEquatable<IType>
     {
         DataTypes Type
         {
@@ -74,23 +75,25 @@ namespace Translator
         {
             return string.Format(Type.ToString().ToLower());
         }
+
+        public bool Equals(IType other)
+        {
+            if (!(other is PlainType))
+                return false;
+            return Type == other.Type;
+        }
     }
 
-    public class ClassType : IType
+    public class ClassType : IType, INamedDataContainer
     {
         public string Name;
         public Scope Scope;
         public ClassType Parent;
         public AttributeList AttributeList;
         public ClassSymbolTable SymbolTable;
+        public SourcePosition DeclarationPosition;
 
-        public DataTypes Type
-        {
-            get
-            {
-                return DataTypes.Class;
-            }
-        }
+        public DataTypes Type => DataTypes.Class;
 
         public ClassType(string name)
         {
@@ -111,7 +114,40 @@ namespace Translator
 		public override string ToString()
 		{
 			return string.Format(Name);
-		}
+        }
+
+        public bool Equals(IType other)
+        {
+            if (!(other is ClassType clazz))
+                return false;
+            return clazz.Name == Name;
+        }
+
+        public bool HasDeclaration(Token variable)
+        {
+            return SymbolTable.Contains(variable.Representation);
+        }
+
+        public bool HasDeclarationRecursively(Token variable)
+        {
+            return HasDeclaration(variable) || (Parent != null && Parent.HasDeclarationRecursively(variable));
+        }
+
+        public INamedDataElement FindDeclaration(Token token)
+        {
+            return SymbolTable.Find(token.Representation);
+        }
+
+        public INamedDataElement FindDeclarationRecursively(Token token)
+        {
+            return FindDeclaration(token) ?? Parent?.FindDeclarationRecursively(token);
+        }
+
+        public INamedDataElement FindMethod(Token token, List<IType> paramList)
+        {
+            var methods = SymbolTable.Methods;
+            var suitted = methods.Where(m => m.Name == token.Representation && m.ParametersFitsArgs(paramList));
+        }
     }
 
     public class ArrayType : IType
@@ -119,13 +155,7 @@ namespace Translator
         public int Dimensions;
         public IType Inner;
 
-        public DataTypes Type
-        {
-            get
-            {
-                return DataTypes.Array;
-            }
-        }
+        public DataTypes Type => DataTypes.Array;
 
         public ArrayType(IType inner, int dimens)
         {
@@ -140,6 +170,13 @@ namespace Translator
                 dimens += "[]";
             return string.Format(Inner.ToString() + dimens);
 		}
+
+        public bool Equals(IType other)
+        {
+            if (!(other is ArrayType array))
+                return false;
+            return array.Dimensions == Dimensions && array.Inner.Equals(Inner);
+        }
     }
 }
 

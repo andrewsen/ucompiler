@@ -29,6 +29,11 @@ namespace Translator
                 parseGlobalScope(src);
             }
 
+            foreach(var clazz in classList)
+            {
+                compileClass(clazz);
+            }
+
             foreach (var src in compilerConfig.Sources)
             {
                 // Compiling 
@@ -37,7 +42,15 @@ namespace Translator
             }
         }
 
-        void parseGlobalScope(string src)
+        private void compileClass(ClassType clazz)
+        {
+            foreach(var method in clazz.SymbolTable.Methods)
+            {
+                evalMethod(method);
+            }
+        }
+
+        private void parseGlobalScope(string src)
         {
             TokenStream gStream = new TokenStream(File.ReadAllText(src), src);
 
@@ -64,7 +77,7 @@ namespace Translator
             }
         }
 
-        void parseAttribute(TokenStream gStream)
+        private void parseAttribute(TokenStream gStream)
         {
             AttributeReader reader = new AttributeReader(gStream);
 
@@ -188,14 +201,15 @@ namespace Translator
             }
         }
 
-        void parseImport(TokenStream gStream)
+        private void parseImport(TokenStream gStream)
         {
             throw new NotImplementedException();
         }
 
-        void parseClass(TokenStream gStream, Scope classScope)
+        private void parseClass(TokenStream gStream, Scope classScope)
         {
             ClassType clazz = new ClassType(gStream.GetIdentifierNext());
+			clazz.DeclarationPosition = gStream.SourcePosition;
             clazz.Scope = classScope;
             clazz.AttributeList = bindedAttributeList;
             bindedAttributeList.Clear();
@@ -205,6 +219,7 @@ namespace Translator
             while (!gStream.Eof)
             {
                 var entry = readCommonClassEntry(gStream);
+                entry.Class = clazz;
 
                 gStream.Next();
                 //TODO: Move attributes parsing to readCommonClassEntry()
@@ -257,7 +272,7 @@ namespace Translator
             classList.Add(clazz);
         }
 
-        Field parseField(CommonClassEntry entry, TokenStream gStream)
+        private Field parseField(CommonClassEntry entry, TokenStream gStream)
         {
             Field field = new Field();
             if (gStream.Is(STAT_SEP) && entry.Modifiers.HasFlag(ClassEntryModifiers.Const))
@@ -272,7 +287,7 @@ namespace Translator
             return field;
         }
 
-        Property parseProperty(CommonClassEntry entry, TokenStream gStream)
+        private Property parseProperty(CommonClassEntry entry, TokenStream gStream)
         {
             Property property = new Property();
             property.FromClassEntry(entry);
@@ -283,7 +298,7 @@ namespace Translator
                 // Short readonly properties must contain expression, not block
                 Method getter = new Method();
                 getter.FromClassEntry(entry);
-                getter.Begin = gStream.TokenPosition;
+                getter.BodyStream = gStream.Fork();
 
                 gStream.SkipTo(STAT_SEP, false);
 
@@ -293,31 +308,33 @@ namespace Translator
             {
                 while (!gStream.Eof)
                 {
-					if (gStream.Next() == GETTER_DECL)
-					{
-						if (property.Getter != null)
-							InfoProvider.AddError("Getter for this property already exists", ExceptionType.MultipleGetters, gStream.SourcePosition);
-						property.Getter = parsePropertyFunction(entry, gStream);
-					}
-					else if (gStream.Is(SETTER_DECL))
-					{
-						if (property.Setter != null)
-							InfoProvider.AddError("Setter for this property already exists", ExceptionType.MultipleSetters, gStream.SourcePosition);
-						property.Setter = parsePropertyFunction(entry, gStream);
-					}
+                    if (gStream.Next() == GETTER_DECL)
+                    {
+                        if (property.Getter != null)
+                            InfoProvider.AddError("Getter for this property already exists", ExceptionType.MultipleGetters, gStream.SourcePosition);
+                        property.Getter = parsePropertyFunction(entry, gStream);
+                    }
+                    else if (gStream.Is(SETTER_DECL))
+                    {
+                        if (property.Setter != null)
+                            InfoProvider.AddError("Setter for this property already exists", ExceptionType.MultipleSetters, gStream.SourcePosition);
+                        property.Setter = parsePropertyFunction(entry, gStream);
+                    }
                     else if (gStream.Is(BLOCK_C))
                         break;
+                    else
+                        InfoProvider.AddError("Unexpected symbol", ExceptionType.UnexpectedToken, gStream.SourcePosition);
                     // TODO: Reporting illegal token
                 }
             }
             return property;
         }
 
-        Method parsePropertyFunction(CommonClassEntry entry, TokenStream gStream)
+        private Method parsePropertyFunction(CommonClassEntry entry, TokenStream gStream)
         {
             Method function = new Method();
             function.FromClassEntry(entry);
-            function.Begin = gStream.TokenPosition;
+            function.BodyStream = gStream.Fork();
 
             if (gStream.Next() == BLOCK_O)
                 gStream.SkipBraced(BLOCK_CHAR_O, BLOCK_CHAR_C);
@@ -330,7 +347,7 @@ namespace Translator
             return function;
         }
 
-        Method parseMethod(CommonClassEntry entry, TokenStream gStream)
+        private Method parseMethod(CommonClassEntry entry, TokenStream gStream)
         {
             Method method = new Method();
             method.FromClassEntry(entry);
@@ -340,22 +357,28 @@ namespace Translator
 
             if (gStream.Next() == SHORT_FUNC_DECL)
 			{
-				// Saving method start token (points after '->' symbol)
-				method.Begin = gStream.TokenPosition;
+				method.DeclarationForm = DeclarationForm.Short;
+                // Saving method start token (points after '->' symbol)
+                method.BodyStream = gStream.Fork();
             }
             else if (gStream.Is(BLOCK_O))
             {
+                method.DeclarationForm = DeclarationForm.Full;
                 // Saving method start token (points on '{' symbol)
-                method.Begin = gStream.TokenPosition - BLOCK_O.Length;
+                method.BodyStream = gStream.Fork(); //gStream.TokenPosition - BLOCK_O.Length;
 
                 // Skipping method body
                 gStream.SkipBraced(BLOCK_CHAR_O, BLOCK_CHAR_C);
+            }
+            else
+            {
+                InfoProvider.AddError("Unexpected symbol", ExceptionType.UnexpectedToken, gStream.SourcePosition);
             }
 
             return method;
         }
 
-        ParameterList readParams(TokenStream gStream)
+        private ParameterList readParams(TokenStream gStream)
         {
             var plist = new ParameterList();
             //gStream.Next();
@@ -383,7 +406,7 @@ namespace Translator
             return plist;
         }
 
-        CommonClassEntry readCommonClassEntry(TokenStream gStream)
+        private CommonClassEntry readCommonClassEntry(TokenStream gStream)
         {               
             CommonClassEntry entry = new CommonClassEntry();
 
@@ -399,7 +422,7 @@ namespace Translator
             return entry;
         }
 
-        Scope readScope(TokenStream gStream)
+        private Scope readScope(TokenStream gStream)
         {
             var token = gStream.Next();
             Scope scope = Scope.Private;
@@ -421,7 +444,7 @@ namespace Translator
             return scope;
         }
 
-        ClassEntryModifiers readModifiers(TokenStream gStream)
+        private ClassEntryModifiers readModifiers(TokenStream gStream)
         {
             // [static [native|const]]
             var token = gStream.Next();
@@ -445,7 +468,427 @@ namespace Translator
             return modifiers;
         }
 
-        void compileFile(string src)
+        private void evalMethod(Method method)
+        {
+            if (method.DeclarationForm == DeclarationForm.Full)
+            {
+                method.Body = evalBlock(new CodeBlock(method.Class, method.Class), method.BodyStream);
+                method.Body.Parent = method.Class;
+                method.Body.ClassContext = method.Class;
+            }
+            else
+                InfoProvider.AddError("Short form is unsupported now", ExceptionType.NotImplemented, method.DeclarationPosition);
+        }
+
+        private CodeBlock evalBlock(CodeBlock parent, TokenStream lStream)
+        {
+            CodeBlock block = new CodeBlock(parent);
+
+            var entryToken = lStream.Next();
+
+            if (!(entryToken.IsIdentifier() || entryToken.IsOp() || (entryToken.IsDelim() && entryToken.Representation == BLOCK_O)))
+                InfoProvider.AddError("Identifier, control keyword, type or block expected", ExceptionType.IllegalToken, lStream.SourcePosition);
+
+            switch(entryToken.Representation)
+            {
+                case IF:
+                    break;
+                case FOR:
+                    break;
+                case WHILE:
+                    break;
+                case DO:
+                    break;
+                case SWITCH:
+                    break;
+                case FOREACH:
+                    break;
+                case RETURN:
+                    break;
+                case BLOCK_O:
+                    break;
+                default:
+                    evalStatement(parent, lStream);
+                    break;
+            }
+
+            return block;
+        }
+
+        private void evalStatement(CodeBlock parent, TokenStream lStream)
+        {
+            if (isRegisteredType(lStream.Current))
+                evalLocalVarDeclaration(parent, lStream);
+
+            lStream.PushBack();
+            var expr = evalExpression(lStream);
+            var rootNode = expressionToAST(expr);
+            //assignTypes(rootNode, parent);
+        }
+
+        private void evalLocalVarDeclaration(CodeBlock parent, TokenStream lStream)
+        {
+
+        }
+
+        public Expression evalExpression(TokenStream stream, ParsingPolicy parsingPolicy = ParsingPolicy.Brackets)
+        {
+            // TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
+
+            List<Token> resultingExpression = new List<Token>();
+            Stack<int> functionArgCounter = new Stack<int>();
+            Stack<Token> opStack = new Stack<Token>();
+            Token lastToken = Token.EOF;
+
+            int bracketsCount = 0;
+
+            /// <summary>
+            /// Satisfieses the policy.
+            /// </summary>
+            /// <returns><c>true</c>, if policy was satisfiesed, <c>false</c> otherwise.</returns>
+            /// <param name="token">Token.</param>
+            bool satisfiesPolicy(Token token)
+            {
+                if (token == Token.EOF)
+                    return false;
+                switch (parsingPolicy)
+                {
+                    case ParsingPolicy.Brackets:
+                        return bracketsCount >= 0;
+                    case ParsingPolicy.Semicolon:
+                        return !token.IsSemicolon();
+                    case ParsingPolicy.Both:
+                        return bracketsCount >= 0 && !token.IsSemicolon();
+                }
+                throw new ArgumentOutOfRangeException(nameof(parsingPolicy), "Invalid parsing policy");
+            }
+
+            while (satisfiesPolicy(stream.Next()))
+            {
+                var token = stream.Current;
+                if (token.IsConstant() || token.IsIdentifier())
+                {
+                    if (lastToken.IsOneOf(PAR_C, INDEXER_C))
+                        InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, stream.SourcePosition);
+                    if (lastToken.IsIdentifier())
+                        InfoProvider.AddError("Unexpected identifier", ExceptionType.BadExpression, stream.SourcePosition);
+                    resultingExpression.Add(token);
+                    lastToken = token;
+                }
+                else if (token.IsOp())
+                {
+                    /*
+                     * Пока присутствует на вершине стека токен оператор op2, и
+                     * Либо оператор op1 лево-ассоциативен и его приоритет меньше, чем у оператора op2 либо равен,
+                     * или оператор op1 право-ассоциативен и его приоритет меньше, чем у op2,
+                     * переложить op2 из стека в выходную очередь;
+                    */
+
+                    // Determine if it is prefix or postfix 
+                    if (token.Operation.Is(OperationType.Inc, OperationType.Dec))
+                    {
+                        if (lastToken == Token.EOF || lastToken.IsOp() || lastToken.IsOneOf(TokenType.Delimiter, INDEXER_O, PAR_O))
+                        {
+                            token.Operation.Type = token.Operation.Type | OperationType.PreMask;
+                            token.Operation.Priority++;
+                        }
+                        else
+                        {
+                            token.Operation.Type = token.Operation.Type | OperationType.PostMask;
+                            token.Operation.Association = Association.Right;
+                        }
+                    }
+                    while (opStack.Count > 0 && opStack.Peek().IsOp())
+                    {
+                        if ((token.Operation.Association == Association.Left && token.Operation.Priority <= opStack.Peek().Operation.Priority)
+                           || (token.Operation.Association == Association.Right && token.Operation.Priority <= opStack.Peek().Operation.Priority))
+                        {
+                            resultingExpression.Add(opStack.Pop());
+                        }
+                        else
+                            break;
+                    }
+                    opStack.Push(token);
+                    lastToken = token;
+                }
+                else if (token == INDEXER_O)
+                {
+                    if (lastToken.IsOp())
+                        InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, stream.SourcePosition);
+                    opStack.Push(token);
+                    lastToken = token;
+                }
+                else if (token == INDEXER_C)
+                {
+                    // a = b[c + 4];
+                    // a b[c + 4] - 6 =
+                    // a b c 4 + [] 6 - =
+                    if (lastToken.IsOp())
+                        InfoProvider.AddError("Unexpected `]`", ExceptionType.Brace, stream.SourcePosition);
+
+                    while (opStack.Count > 0 && opStack.Peek() != INDEXER_O)
+                    {
+                        if (opStack.Peek() == PAR_O)
+                            InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
+                        resultingExpression.Add(opStack.Pop());
+                    }
+                    if (opStack.Count == 0)
+                        InfoProvider.AddError("`[` is missed", ExceptionType.Brace, stream.SourcePosition);
+                    else
+                        opStack.Pop();
+                    token.Representation = "[]";
+                    token.Type = TokenType.Operator;
+                    token.Operation = Operation.From("[]");
+                    resultingExpression.Add(token);
+                    lastToken = token;
+                }
+                else if (token == PAR_O)
+                {
+                    bracketsCount++;
+                    // Process as function
+                    // x = fun(1, g(5, y*(3-i), 8));
+
+                    // x = f(1, 2+3, a*(b-c), true);
+                    // x f ()=
+
+                    if (lastToken.IsIdentifier())
+                    {
+                        // Function call operator
+                        var callToken = new Token();
+                        callToken.Representation = "()";
+                        callToken.Type = TokenType.Operator;
+                        callToken.Operation = Operation.From("()");
+
+                        // Counting function arguments by commas
+                        var lookupStream = stream.Fork();
+                        if (lookupStream.IsNext(PAR_C, TokenType.Delimiter))
+                            callToken.Operation.ArgumentCount = 0;
+                        else
+                        {
+                            callToken.Operation.ArgumentCount = 1;
+                            int callBracketsCount = 1;
+                            while(!lookupStream.Eof && callBracketsCount > 0)
+                            {
+                                if (lookupStream.IsNext(PAR_C, TokenType.Delimiter))
+                                    callBracketsCount--;
+                                else if (lookupStream.Is(PAR_O))
+                                    callBracketsCount++;
+                                else if(callBracketsCount == 1 && lookupStream.Is(SEP, TokenType.Delimiter))
+                                    callToken.Operation.ArgumentCount++;
+                            }
+                        }
+                        while (opStack.Count > 0 && opStack.Peek().IsOp())
+                        {
+                            if ((callToken.Operation.Association == Association.Left && callToken.Operation.Priority <= opStack.Peek().Operation.Priority)
+                                || (callToken.Operation.Association == Association.Right && callToken.Operation.Priority <= opStack.Peek().Operation.Priority))
+                            {
+                                resultingExpression.Add(opStack.Pop());
+                            }
+                            else
+                                break;
+                        }
+
+                        opStack.Push(callToken);
+                        functionArgCounter.Push(0);
+                    }
+                    else if (!lastToken.IsOp())
+                        InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, stream.SourcePosition);
+                    opStack.Push(token);
+                    lastToken = token;
+                }
+                else if (token == PAR_C)
+                {
+                    bool isFuncCall = false;
+                    bracketsCount--;
+                    if (lastToken.IsOp() && lastToken.Operation.Type != OperationType.FunctionCall)
+                        InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, stream.SourcePosition);
+                    while (opStack.Count > 0 && opStack.Peek() != PAR_O)
+                    {
+                        var op = opStack.Peek();
+                        if (op.Operation.Type == OperationType.FunctionCall)
+                        {
+                            isFuncCall = true;
+                        }
+                        else
+                        {
+                            isFuncCall = false;
+                        }
+                        resultingExpression.Add(opStack.Pop());
+                    }
+                    if (opStack.Count == 0 && !isFuncCall)
+                        InfoProvider.AddError("`(` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
+                    //else if(!isFuncCall)
+                    opStack.Pop();
+                }
+                else if (token == SEP)
+                {
+                    if (!(lastToken.IsConstant() || lastToken.IsIdentifier() || lastToken == PAR_C || lastToken == INDEXER_C))
+                        InfoProvider.AddError("Unexpected comma", ExceptionType.UnexpectedComma, stream.SourcePosition);
+                    functionArgCounter.Push(functionArgCounter.Pop() + 1);
+                    while (opStack.Count != 0 && opStack.Peek() != PAR_O)
+                        resultingExpression.Add(opStack.Pop());
+                    lastToken = token;
+                    //isUnary = true;
+                }
+            }
+            while (opStack.Count > 0)
+            {
+                var op = opStack.Pop();
+                if (op == PAR_O)
+                    InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
+                if (op == INDEXER_O)
+                    InfoProvider.AddError("`]` is missed", ExceptionType.Brace, stream.SourcePosition);
+                resultingExpression.Add(op);
+            }
+            return new Expression(resultingExpression, stream.SourcePosition);
+        }
+
+        public Node expressionToAST(Expression expr)
+        {
+            return makeASTNode(new Stack<Token>(expr.Tokens));
+        }
+
+        private Node makeASTNode(Stack<Token> polish)
+        {
+            if (polish.Count == 0)
+                return null;
+            var tok = polish.Pop();
+
+            Node result = new Node(tok);
+            if (tok.IsOp())
+            {
+                if (tok.Operation.IsUnary)
+                {
+                    result.Left = makeASTNode(polish);
+                    if (result.Left == null)
+                        InfoProvider.AddError($"Argument of {tok} is missing", ExceptionType.BadExpression, tok.Position);
+                }
+                else if (!tok.Operation.IsUnary && tok.Operation.Type != OperationType.FunctionCall)
+                {
+                    result.Right = makeASTNode(polish);
+                    result.Left = makeASTNode(polish);
+                    if (result.Left == null && result.Right == null)
+                        InfoProvider.AddError($"Both arguments of {tok} is missing", ExceptionType.BadExpression, tok.Position);
+                    else if (result.Left == null || result.Right == null)
+                        InfoProvider.AddError($"Argument of {tok} is missing", ExceptionType.BadExpression, tok.Position);
+                    else if (tok.Operation.Type == OperationType.Assign && result.Left.Token.IsConstant())
+                        InfoProvider.AddError("rvalue can't be on left side of assignment operator", ExceptionType.lValueExpected, tok.Position);
+                }
+                else // if(tok.Operation.Type == OperationType.FunctionCall)
+                {
+                    int argCount = tok.Operation.ArgumentCount + 1;
+                    while (argCount-- != 0)
+                        result.AddRight(makeASTNode(polish));
+                    if (result.Left == null)
+                        InfoProvider.AddError("No function name defined", ExceptionType.FunctionName, tok.Position);
+                    else if (!result.Left.Token.IsIdentifier())
+                        InfoProvider.AddError("Identifier expected as function name", ExceptionType.FunctionName, tok.Position);
+                }
+            }
+
+            return result;
+        }
+
+        private void assignTypes(Node node, CodeBlock parent, List<IType> paramList = null)
+        {
+            // TODO: Andrew Senko: Add declaration checks
+            List<IType> methodArgs = new List<IType>();
+            if (node.Token.IsOp(OperationType.FunctionCall))
+            {
+                for (int i = 0; i < node.Children.Count - 1; ++i)
+                {
+                    var child = node.Children[i];
+                    assignTypes(child, parent);
+                    methodArgs.Add(child.Type);
+                    //node.Type = CombineType(node.Type, child.Type);
+                }
+                var invokable = node.Left;
+                assignTypes(invokable, parent, methodArgs);
+
+                var method = invokable.RelatedNamedData as Method;
+                int argc = node.Children.Count - 1;
+                for (int i = 0; i < argc; ++i)
+                {
+                    var child = node.Children[i];
+                    var parameter = method.Parameters[argc - i - 1];
+
+                    // Casting if not equal types
+                    if(!parameter.Type.Equals(child.Type))
+                    {
+                        Node converter = new Node(new Token { Type = TokenType.Operator, Operation = Operation.Cast, Position = node.Children[i].Token.Position});
+                        converter.Type = parameter.Type;
+                        converter.Left = child;
+                        node.Children[i] = converter;
+                    }
+                }
+            }
+            if (node.Token.IsOp(OperationType.MemberAccess))
+            {
+                // x.f() - x y . ()
+                var owner = node.Left;
+                var member = node.Right;
+
+                assignTypes(owner, parent);
+
+                var ownerClass = owner.Type as ClassType; // TODO: Check
+
+                if (!member.Token.IsIdentifier())
+                    InfoProvider.AddError("Identifier expected", ExceptionType.InvalidMemberAccess, member.Token.Position);
+
+                // Field, property
+                if (paramList == null)
+                {
+                    // TODO: Encapsulation
+                    var decl = ownerClass.FindDeclaration(member.Token);
+                    member.Type = node.Type = decl.Type;
+                    member.RelatedNamedData = node.RelatedNamedData = decl;
+                }
+                else // method
+                {
+                    // TODO: Encapsulation
+                    var decl = ownerClass.FindMethod(member.Token, paramList);
+                    member.Type = node.Type = decl.Type;
+                    member.RelatedNamedData = node.RelatedNamedData = decl;
+                }
+            }
+            if (node.Token.IsOp())
+            {
+                if (node.Children.Count == 1)
+                {
+                    assignTypes(node.Left, parent);
+                    node.Type = node.Left.Type;
+                }
+                else if (node.Children.Count == 2)
+                {
+                    assignTypes(node.Right, parent);
+                    assignTypes(node.Left, parent);
+                    //node.Type = getHightestType(node.Left, node.Right);
+                }
+                else // WTF. Can't be
+                    InfoProvider.AddError("Too many childrens in operator", ExceptionType.InternalError, node.Token.Position);
+            }
+            else if (node.Token.IsConstant())
+            {
+                node.Type = new PlainType((DataTypes)node.Token.ConstType);
+            }
+            else if(node.Token.IsIdentifier())
+            {
+                var local = parent.FindDeclarationRecursively(node.Token);
+                if (local != null)
+                {
+                    node.RelatedNamedData = local;
+                    node.Type = local.Type;
+                }
+                else if(paramList != null)
+                {
+                    var method = parent.ClassContext.FindMethod(node.Token, paramList);
+                    node.Type = method.Type;
+                    node.RelatedNamedData = method;
+                }
+            }
+        }
+
+        private void compileFile(string src)
         {
             foreach(var clazz in classList)
 			{
@@ -470,11 +913,19 @@ namespace Translator
             return !(dt == DataTypes.Null || (dt == DataTypes.Void && includeVoid));
         }
 
+        private bool isRegisteredType(string type)
+        {
+            if (IsPlainType(type, true))
+                return true;
+            return classList.Exists(c => c.Name == type);
+        }
+
         //
         // Parse
         //
 
-        public IExpression parseExpression(TokenStream gStream)
+        [Obsolete]
+        public Expression parseExpression(TokenStream stream)
         {
 			// TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
 
@@ -483,7 +934,7 @@ namespace Translator
 			Stack<Token> opStack = new Stack<Token>();
             Token lastToken = Token.EOF;
 
-            while(gStream.Next().Type != TokenType.Semicolon)
+            while(stream.Next().Type != TokenType.Semicolon)
 			{
                 //Console.WriteLine($"Current {gStream.Current}");
                 //if(gStream.Current.Type == TokenType.EOF)
@@ -491,13 +942,13 @@ namespace Translator
                 //    InfoProvider.AddError("Semicilion `;` is missed", ExceptionType.SemicolonExpected, gStream.SourcePosition);
                 //    break;
                 //}
-				var token = gStream.Current;
+				var token = stream.Current;
                 if(token.IsConstant() || token.IsIdentifier())
 				{
                     if (lastToken.IsOneOf(PAR_C, INDEXER_C))
-						InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, gStream.SourcePosition);
+						InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, stream.SourcePosition);
                     if (lastToken.IsIdentifier())
-                        InfoProvider.AddError("Unexpected identifier", ExceptionType.BadExpression, gStream.SourcePosition);
+                        InfoProvider.AddError("Unexpected identifier", ExceptionType.BadExpression, stream.SourcePosition);
                     resultingExpression.Add(token);
                     lastToken = token;
                 }
@@ -525,7 +976,7 @@ namespace Translator
                 else if (token == INDEXER_O)
 				{
                     if (lastToken.IsOp())
-						InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, gStream.SourcePosition);
+						InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, stream.SourcePosition);
 					opStack.Push(token);
                     lastToken = token;
                 }
@@ -535,16 +986,16 @@ namespace Translator
                     // a b[c + 4] - 6 =
                     // a b c 4 + [] 6 - =
                     if (lastToken.IsOp())
-                        InfoProvider.AddError("Unexpected `]`", ExceptionType.Brace, gStream.SourcePosition);
+                        InfoProvider.AddError("Unexpected `]`", ExceptionType.Brace, stream.SourcePosition);
 
                     while (opStack.Count > 0 && opStack.Peek() != INDEXER_O)
                     {
 						if ((opStack.Peek() == PAR_O))
-							InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, gStream.SourcePosition);
+							InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
                         resultingExpression.Add(opStack.Pop());
                     }
                     if (opStack.Count == 0)
-                        InfoProvider.AddError("`[` is missed", ExceptionType.Brace, gStream.SourcePosition);
+                        InfoProvider.AddError("`[` is missed", ExceptionType.Brace, stream.SourcePosition);
                     else
                         opStack.Pop();
                     token.Representation = "[]";
@@ -566,14 +1017,14 @@ namespace Translator
                         functionArgCounter.Push(0);
                     }
                     else if (!lastToken.IsOp())
-						InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, gStream.SourcePosition);
+						InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, stream.SourcePosition);
 					opStack.Push(token);
 					lastToken = token;
                 }
                 else if (token == PAR_C)
 				{
 					if (lastToken.IsOp())
-                        InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, gStream.SourcePosition);
+                        InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, stream.SourcePosition);
                     while (opStack.Count > 0 && opStack.Peek() != PAR_O)
                     {
                         if (opStack.Peek().Operation.Type == OperationType.FunctionCall)
@@ -586,14 +1037,14 @@ namespace Translator
                             resultingExpression.Add(opStack.Pop());
                     }
 					if (opStack.Count == 0)
-                        InfoProvider.AddError("`(` is missed", ExceptionType.MissingParenthesis, gStream.SourcePosition);
+                        InfoProvider.AddError("`(` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
                     else
 						opStack.Pop();
                 }
                 else if(token == SEP)
                 {
 					if (!(lastToken.IsConstant() || lastToken.IsIdentifier() || lastToken == PAR_C || lastToken == INDEXER_C))
-                        InfoProvider.AddError("Unexpected comma", ExceptionType.UnexpectedComma, gStream.SourcePosition);
+                        InfoProvider.AddError("Unexpected comma", ExceptionType.UnexpectedComma, stream.SourcePosition);
                     functionArgCounter.Push(functionArgCounter.Pop()+1);
                 }
 				//Console.Write("\tOp stack:\n\t");
@@ -608,12 +1059,12 @@ namespace Translator
             {
 				var op = opStack.Pop();
 				if (op == PAR_O)
-					InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, gStream.SourcePosition);
+					InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
                 if (op == INDEXER_O)
-                    InfoProvider.AddError("`]` is missed", ExceptionType.Brace, gStream.SourcePosition);
+                    InfoProvider.AddError("`]` is missed", ExceptionType.Brace, stream.SourcePosition);
                 resultingExpression.Add(op);
 			}
-            return new Expression(resultingExpression, gStream.SourcePosition);
+            return new Expression(resultingExpression, stream.SourcePosition);
         }
 
         public Node buildAST(Expression expr)
