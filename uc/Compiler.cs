@@ -474,14 +474,15 @@ namespace Translator
         // Parse
         //
 
-        public CodeBlock parseBlock(TokenStream gStream)
+        public CodeBlock parseBlock(CodeBlock parent, TokenStream gStream)
         {
-            var block = new CodeBlock();
+            var block = new CodeBlock(parent);
             while (!gStream.Eof)
             {
                 var entryToken = gStream.Next();
                 if (entryToken.Type == TokenType.EOF)
-                    InfoProvider.AddError("Missing end of block statement (`end;`)", ExceptionType.FlowError, gStream.SourcePosition, true);
+                    return block;
+                    //InfoProvider.AddError("Missing end of block statement (`end;`)", ExceptionType.FlowError, gStream.SourcePosition, true);
                 if (entryToken.Type == TokenType.Unknown)
                     InfoProvider.AddError("Bad expression", ExceptionType.BadExpression, gStream.SourcePosition, true);
                 switch (entryToken.Representation.ToLower())
@@ -490,7 +491,7 @@ namespace Translator
                         evalIf(block, gStream);
                         break;
                     case BLOCK_O:
-                        block.Children.Add(parseBlock(gStream));
+                        block.Children.Add(parseBlock(parent, gStream));
                         break;
                     case BLOCK_C:
                         if (gStream.Next().Type != TokenType.Semicolon)
@@ -498,13 +499,82 @@ namespace Translator
                         //gStream.CheckNext(STAT_SEP, ExceptionType.SemicolonExpected);
                         return block;
                     default:
-                        gStream.PushBack();
-                        block.Children.Add(new Statement(buildAST(parseExpression(gStream, TokenType.Semicolon))));
+                        if (new string[] { "int", "float", "long", "char", "double" }.Contains(gStream.Current.Representation))
+                            evalDeclaration(block, gStream);
+                        else
+                        {
+                            gStream.PushBack();
+                            block.Children.Add(new Statement(buildAST(block, parseExpression(gStream, TokenType.Semicolon))));
+                        }
                         break;
                 }
             }
-            InfoProvider.AddError("Block closing statement is missing", ExceptionType.Brace, gStream.SourcePosition);
+            //InfoProvider.AddError("Block closing statement is missing", ExceptionType.Brace, gStream.SourcePosition);
             return block;
+        }
+
+        private void evalDeclaration(CodeBlock parent, TokenStream stream)
+        {
+            DataTypes baseType = PlainType.FromString(stream.Current.Representation);
+
+            Variable variable = null;
+            var type = new PlainType(baseType);
+
+            while(!stream.IsNext(";", TokenType.Semicolon))
+            {
+                if (stream.Is("*"))
+                {
+                    if (variable == null)
+                        type.PointerDimension++;
+                    else
+                        InfoProvider.AddError("Invalid variable declaration syntax", ExceptionType.InvalidVariable, stream.SourcePosition);
+                }
+                else if (stream.Current.IsIdentifier())
+                {
+                    variable = new Variable();
+                    variable.Name = stream.Current;
+                }
+                else if (stream.Is("["))
+                {
+                    if (variable != null)
+                    {
+                        var size = stream.Next();
+                        if(!size.IsInteger())
+                            InfoProvider.AddError("Array size have to be integer", ExceptionType.ArraySize, stream.SourcePosition);
+                        type.ArraySize = int.Parse(size.Representation);
+                        if (type.ArraySize == 0)
+                            InfoProvider.AddError("Array size can't be 0", ExceptionType.ArraySize, stream.SourcePosition);
+                        stream.CheckNext("]", ExceptionType.Brace, true);
+                        type.PointerDimension++;
+                    }
+                    else
+                        InfoProvider.AddError("Invalid variable declaration syntax", ExceptionType.InvalidVariable, stream.SourcePosition);
+                }
+                else if (stream.Is(",", TokenType.Delimiter))
+                {
+                    if(variable == null)
+                        InfoProvider.AddError("Invalid variable declaration syntax", ExceptionType.InvalidVariable, stream.SourcePosition);
+                    else
+                    {
+                        variable.Type = type;
+                        parent.Locals.Add(variable);
+
+                        variable = null;
+                        type = new PlainType(baseType);
+                    }
+                }
+            }
+            if (variable == null)
+                InfoProvider.AddError("Invalid variable declaration syntax", ExceptionType.InvalidVariable, stream.SourcePosition);
+            else
+            {
+                variable.Type = type;
+                parent.Locals.Add(variable);
+
+                variable = null;
+                type = new PlainType(baseType);
+            }
+            //stream.Next();
         }
 
         public void evalIf(CodeBlock block, TokenStream gStream)
@@ -535,7 +605,7 @@ namespace Translator
             if (collectedExpr.Length == 0)
                 InfoProvider.AddError("Empty statement", ExceptionType.BadExpression, gStream.SourcePosition);
 
-            ifExpr.Condition = buildAST(parseExpression(new TokenStream(collectedExpr, gStream.SourcePosition.File)));
+            ifExpr.Condition = buildAST(block, parseExpression(new TokenStream(collectedExpr, gStream.SourcePosition.File)));
             if (ifExpr.Condition.Token.IsOp() && ifExpr.Condition.Token.Operation.Type == OperationType.Assign)
                 InfoProvider.AddError("Assignment is forbidden in conditions", ExceptionType.IllegalToken, gStream.SourcePosition);
 
@@ -543,7 +613,7 @@ namespace Translator
 
             gStream.CheckNext(THEN, ExceptionType.BadExpression, true);
             gStream.CheckNext(BLOCK_O, ExceptionType.BadExpression, true);
-            ifExpr.Block = parseBlock(gStream);
+            ifExpr.Block = parseBlock(block, gStream);
         }
 
         public Expression parseExpression(TokenStream gStream, TokenType stopToken = TokenType.EOF)
@@ -663,14 +733,14 @@ namespace Translator
             return new Expression(resultingExpression);
         }
 
-        public Node buildAST(Expression expr)
+        public Node buildAST(CodeBlock block, Expression expr)
         {
             // a b c * 4 e * + =
             var count = expr.Tokens.Count;
-            return buildNode(new Stack<Token>(expr.Tokens), expr.SourcePosition);
+            return buildNode(block, new Stack<Token>(expr.Tokens), expr.SourcePosition);
         }
 
-        public Node buildNode(Stack<Token> rpn, SourcePosition position)
+        public Node buildNode(CodeBlock block, Stack<Token> rpn, SourcePosition position)
         {
             if (rpn.Count == 0)
                 return null;
@@ -679,8 +749,8 @@ namespace Translator
             Node result = new Node(tok);
             if(tok.IsOp())
             {
-                result.Right = buildNode(rpn, position);
-                result.Left = buildNode(rpn, position);
+                result.Right = buildNode(block, rpn, position);
+                result.Left = buildNode(block, rpn, position);
 
                 if (result.Left == null && result.Right == null)
                     InfoProvider.AddError($"Both arguments of {tok} is missed", ExceptionType.BadExpression, position);
@@ -691,6 +761,69 @@ namespace Translator
                 // Pascal specific
                 else if (result.Left.Token.Operation?.Type == OperationType.Assign || result.Right.Token.Operation?.Type == OperationType.Assign)
                     InfoProvider.AddError($"Assignment operator can be only as a root node", ExceptionType.BadExpression, position);
+
+                else if (new OperationType[] { OperationType.And, OperationType.Or }.Contains(tok.Operation.Type))
+                {
+                    if (!result.Left.Type.Equals(DataTypes.Bool) || !result.Right.Type.Equals(DataTypes.Bool))
+                        InfoProvider.AddError($"AND, OR operations must have boolean operands", ExceptionType.IllegalType, position);
+                }
+
+                else if (new OperationType[] { OperationType.Greater, OperationType.GreaterEquals, OperationType.Equals, 
+                    OperationType.NotEquals, OperationType.Lower, OperationType.LowerEquals }.Contains(tok.Operation.Type))
+                {
+                    if (!result.Left.Type.In(DataTypes.I8, DataTypes.I16, DataTypes.I32, DataTypes.I64, 
+                                             DataTypes.UI8, DataTypes.UI16, DataTypes.UI32, DataTypes.UI64, DataTypes.Float, DataTypes.Double)
+                        || !result.Right.Type.In(DataTypes.I8, DataTypes.I16, DataTypes.I32, DataTypes.I64,
+                                             DataTypes.UI8, DataTypes.UI16, DataTypes.UI32, DataTypes.UI64, DataTypes.Float, DataTypes.Double))
+                        InfoProvider.AddError($"Comparison operations must have numeric operands", ExceptionType.IllegalType, position);
+                    result.Type = new PlainType("bool");
+                }
+
+                else if (new OperationType[] { OperationType.Add, OperationType.Sub, OperationType.Mul, OperationType.Div }.Contains(tok.Operation.Type))
+                {
+                    if (!result.Left.Type.In(DataTypes.I8, DataTypes.I16, DataTypes.I32, DataTypes.I64,
+                                             DataTypes.UI8, DataTypes.UI16, DataTypes.UI32, DataTypes.UI64, DataTypes.Float, DataTypes.Double)
+                        || !result.Right.Type.In(DataTypes.I8, DataTypes.I16, DataTypes.I32, DataTypes.I64,
+                                             DataTypes.UI8, DataTypes.UI16, DataTypes.UI32, DataTypes.UI64, DataTypes.Float, DataTypes.Double))
+                        InfoProvider.AddError($"Arithmetical operations must have same numeric operands", ExceptionType.IllegalType, position);
+                    result.Type = result.Left.Type;
+                }
+                else if(tok.Operation.Type == OperationType.ArrayGet)
+                {
+                    if (!result.Right.Type.In(DataTypes.I8, DataTypes.I16, DataTypes.I32, DataTypes.I64,
+                                             DataTypes.UI8, DataTypes.UI16, DataTypes.UI32, DataTypes.UI64))
+                        InfoProvider.AddError($"Array index must be integer", ExceptionType.IllegalType, position);
+                    if (!result.Right.Type.In(DataTypes.I8, DataTypes.I16, DataTypes.I32, DataTypes.I64,
+                                             DataTypes.UI8, DataTypes.UI16, DataTypes.UI32, DataTypes.UI64))
+                        InfoProvider.AddError($"Array index must be integer", ExceptionType.IllegalType, position);
+
+                    if(result.Left.Type.PointerDimension == 0)
+                        InfoProvider.AddError($"Array has no dimensions", ExceptionType.IllegalType, position);
+
+                    var newType = new PlainType(result.Left.Type.Type);
+                    newType.PointerDimension = result.Left.Type.PointerDimension - 1;
+                    if (newType.PointerDimension > 0)
+                        newType.ArraySize = result.Left.Type.ArraySize;
+                    result.Type = newType;
+                }
+                else
+                {
+                    if(!result.Left.Type.Equals(result.Right))
+                        InfoProvider.AddError($"Operands should have same type", ExceptionType.IllegalType, position);
+                    result.Type = result.Left.Type;
+                }
+            }
+            else if(tok.IsIdentifier())
+            {
+                var local = block.Locals.Find(l => l.Name == tok.Representation);
+                if(local == null)
+                    InfoProvider.AddError($"Undeclared variable {tok}", ExceptionType.InvalidVariable, position, true);
+                else
+                    result.Type = local.Type as PlainType; 
+            }
+            else if(tok.IsConstant())
+            {
+                result.Type = new PlainType((DataTypes)tok.ConstType);
             }
 
             return result;

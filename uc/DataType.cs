@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Translator
 {
@@ -28,6 +29,9 @@ namespace Translator
         {
             Type = plain;
         }
+
+        public int PointerDimension = 0;
+        public int ArraySize = -1;
 
         public static DataTypes FromString(string type)
         {
@@ -62,9 +66,11 @@ namespace Translator
                 //case "null":     // TODO: Hmmm...
                 //    return DataTypes.Null;
                 //case "array":    // TODO: Hmmm...[2]
-                //    return DataTypes.Array;
+                    //    return DataTypes.Array;
                 case "void":
                     return DataTypes.Void;
+                case "float":
+                    return DataTypes.Float;
                 default:         // TODO: Hmmm...[3]
                     return DataTypes.Null;
             }
@@ -72,7 +78,22 @@ namespace Translator
 
         public override string ToString()
         {
-            return string.Format(Type.ToString().ToLower());
+            return new string('*', PointerDimension) + string.Format(Type.ToString().ToLower()) + (ArraySize == -1 ? "" : $"[{ArraySize}]");
+        }
+
+        public bool Equals(DataTypes type)
+        {
+            return Type == type && ArraySize == -1 && PointerDimension == 0;
+        }
+
+        public bool In(params DataTypes[] types)
+        {
+            return types.Contains(Type) && ArraySize == -1 && PointerDimension == 0;
+        }
+
+        public bool Equals(PlainType other)
+        {
+            return Type == other.Type && ArraySize == other.ArraySize && PointerDimension == other.PointerDimension;
         }
     }
 

@@ -19,7 +19,14 @@ namespace Translator
 
     public class CodeBlock : IExpression
     {
+        public CodeBlock Parent;
         public List<IExpression> Children = new List<IExpression>();
+        public List<Variable> Locals = new List<Variable>();
+
+        public CodeBlock(CodeBlock parent)
+        {
+            Parent = parent;
+        }
     }
 
     public class Node
@@ -28,6 +35,7 @@ namespace Translator
 
 		public Node Left;
 		public Node Right;
+        public PlainType Type;
 
         public Node(Token token)
         {

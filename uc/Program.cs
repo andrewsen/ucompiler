@@ -17,14 +17,13 @@ namespace Translator
                 Environment.Exit(1);
             };
 			Compiler compiler = new Compiler(new CompilerConfig() {
-                Sources = new System.Collections.Generic.List<string>() { "./sp.sc" }
+                Sources = new System.Collections.Generic.List<string>() { "<stdin>" }
             });
-            var gStream = new TokenStream(File.ReadAllText("./sp.sc"), "./sp.sc");
+            var gStream = new TokenStream("float *b, a[2]; long n; b:=n>0 and b=a[n]; n:=n-1;", "<stdin>");
 
-            CodeBlock rootBlock = new CodeBlock();
-            gStream.Next();
-            compiler.evalIf(rootBlock, gStream);
-            PrintBlock(rootBlock, 0);
+            //gStream.Next();
+            var block = compiler.parseBlock(null, gStream);
+            PrintBlock(block, 0);
 
             //var expr = compiler.parseExpression(new TokenStream(args[0], "<stdin>")) as Expression;
             //var root = compiler.buildAST(expr);
@@ -46,6 +45,11 @@ namespace Translator
 
         public static void PrintBlock(CodeBlock block, int level)
         {
+            foreach(var decl in block.Locals)
+            {
+                Console.WriteLine($"{decl.Type as PlainType} {decl.Name}");
+            }
+
             foreach(var stmt in block.Children)
             {
                 switch(stmt)

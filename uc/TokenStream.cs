@@ -23,7 +23,7 @@ namespace Translator
 
         public override string ToString()
         {
-            return string.Format("({0}:{1}:{2}): `{3}`", File, LineNum, TokenPos, Line);
+            return string.Format("({0}:{1}:{2}):\n`{3}`\n{4}^", File, LineNum, TokenPos, Line, new string(' ', TokenPos));
         }
     }
 

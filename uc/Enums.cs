@@ -30,13 +30,14 @@ namespace Translator
     }
 
     public enum ConstantType : int {
-        Char, UI8, I8, UI16, I16, UI32, I32, UI64, I64, Double, String, Null, Bool
+        Char, UI8, I8, UI16, I16, UI32, I32, UI64, I64, Double, Float, String, Null, Bool
     }
 
     public enum DataTypes : byte
     {
         //Null, Void, Byte, Char, Short, Uint, Int, Ulong, Long, Bool, Double, String, Array, Class
-        Void, Char, UI8, I8, UI16, I16, UI32, I32, UI64, I64, Double, String, Null, Bool, Object, Array, Class
+        Char, UI8, I8, UI16, I16, UI32, I32, UI64, I64, Double, Float, String, Null, Bool,
+        Void, Object, Array, Class,
     }
 
     public enum Scope : byte
@@ -91,7 +92,9 @@ namespace Translator
         MultipleGetters,
         MultipleSetters,
         MissingParenthesis,
-        SemicolonExpected
+        SemicolonExpected,
+        InvalidVariable,
+        ArraySize
     }
 
     [Flags]
