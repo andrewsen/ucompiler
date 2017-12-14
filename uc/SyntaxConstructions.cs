@@ -17,16 +17,18 @@ namespace Translator
         INamedDataElement FindDeclaration(Token token);
 
         INamedDataElement FindDeclarationRecursively(Token token);
+
+        INamedDataElement findDeclarationClosure(Token token);
     }
 
     public class Expression : IExpression
     {
         public SourcePosition SourcePosition;
-        public List<Token> Tokens;
+        public Node ExpressionRoot;
 
-        public Expression(List<Token> resultingExpression, SourcePosition position)
+        public Expression(Node rootNode, SourcePosition position)
         {
-            this.Tokens = resultingExpression;
+            ExpressionRoot = rootNode;
             SourcePosition = position;
         }
     }
@@ -34,6 +36,7 @@ namespace Translator
     public class CodeBlock : IExpression, INamedDataContainer
     {
         public ClassType ClassContext;
+        public Method MethodContext;
         public INamedDataContainer Parent;
         public List<Variable> Locals;
         public List<IExpression> Expressions;
@@ -49,13 +52,15 @@ namespace Translator
         {
             Parent = parent;
             ClassContext = parent.ClassContext;
+            MethodContext = parent.MethodContext;
         }
 
-        public CodeBlock(INamedDataContainer parent, ClassType context)
+        public CodeBlock(INamedDataContainer parent, ClassType context, Method methodContext)
             : this()
         {
             Parent = parent;
             ClassContext = context;
+            MethodContext = methodContext;
         }
 
         /// <summary>
@@ -80,7 +85,12 @@ namespace Translator
 
         public INamedDataElement FindDeclarationRecursively(Token token)
         {
-            return FindDeclaration(token) ?? Parent?.FindDeclarationRecursively(token);
+            return FindDeclaration(token) ?? Parent?.findDeclarationClosure(token) ?? MethodContext?.FindParameter(token);
+        }
+
+        public INamedDataElement findDeclarationClosure(Token token)
+        {
+            return FindDeclaration(token) ?? Parent?.findDeclarationClosure(token);
         }
     }
 

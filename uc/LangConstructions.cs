@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 
 namespace Translator
@@ -44,6 +45,9 @@ namespace Translator
 
     public class Variable : INamedDataElement
     {
+        public bool IsAssigned;
+        public bool IsUsed;
+
         public string Name
         {
             get;
@@ -62,6 +66,12 @@ namespace Translator
             set;
         }
 
+        public Variable()
+        {
+            IsAssigned = false;
+            IsUsed = false;
+        }
+
         public static bool operator!=(Variable v1, Variable v2) => !(v1 == v2);
 
         public static bool operator==(Variable v1, Variable v2)
@@ -72,7 +82,12 @@ namespace Translator
         }
     }
 
-    public class ParameterList : List<Variable>
+    public class Parameter : Variable
+    {
+        
+    }
+
+    public class ParameterList : List<Parameter>
     {
         public override string ToString()
         {
@@ -139,5 +154,24 @@ namespace Translator
         /// Points on position before `{` in full form or after `->` in short one
         /// </summary>
         public TokenStream BodyStream;
+
+        public bool ParametersFitsArgs(List<IType> argList)
+        {
+            if (Parameters.Count != argList.Count)
+                return false;
+            for (int i = 0; i < argList.Count; ++i)
+            {
+                var parameter = Parameters[i];
+                var argument = argList[i];
+                if (!parameter.Type.Equals(argument) && !Compiler.CanCast(argument, parameter.Type))
+                    return false;
+            }
+            return true;
+        }
+
+        public INamedDataElement FindParameter(Token token)
+        {
+            return Parameters.Find(p => p.Name == token);
+        }
     }
 }

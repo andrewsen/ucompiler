@@ -109,7 +109,13 @@ namespace Translator
             return readType(toks, identifier, includeVoid);
         }
 
-        private static IType readType(TokenStream toks, string identifier, bool includeVoid)
+        public static IType NextTypeSoft(this TokenStream toks)
+        {
+            string identifier = toks.GetIdentifierNext();
+            return readType(toks, identifier, false, true);
+        }
+
+        private static IType readType(TokenStream toks, string identifier, bool includeVoid, bool soft = false)
         {
             if(identifier == "void" && !includeVoid)
                 InfoProvider.AddError("Unexpected `void` type", ExceptionType.IllegalType, toks.SourcePosition);
@@ -119,13 +125,22 @@ namespace Translator
             while (!toks.Eof)
             {
                 if (toks.IsNext("["))
+                {
                     dimens++;
+                }
                 else
                 {
                     toks.PushBack();
                     break;
                 }
-                toks.CheckNext("]", ExceptionType.Brace);
+                if (!soft)
+                    toks.CheckNext("]", ExceptionType.Brace);
+                else if(!toks.IsNext("]"))
+                {
+                    --dimens;
+                    toks.PushBack();
+                    break;
+                }
             }
 
             if(identifier == "void" && dimens > 0)

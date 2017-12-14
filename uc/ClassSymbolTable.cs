@@ -21,7 +21,8 @@ namespace Translator
                 AddProperty(element as Property);
             else if (element is Field)
                 AddField(element as Field);
-			InfoProvider.AddError("WTF. Unsupported class element", ExceptionType.ImpossibleError, element.DeclarationPosition);
+            else
+			    InfoProvider.AddError("WTF. Unsupported class element", ExceptionType.ImpossibleError, element.DeclarationPosition);
 		}
 
         public void AddField(Field field)

@@ -25,7 +25,7 @@ namespace Translator
 
         public override string ToString()
         {
-            return string.Format("({0}:{1}:{2}): `{3}`", File, LineNum, TokenPos, Line);
+            return string.Format("({0}:{1}:{2}):\n{3}\n{4}^", File, LineNum, TokenPos, Line, new string(' ', TokenPos));
         }
     }
 
@@ -176,18 +176,12 @@ namespace Translator
             {
                 temp += source[pos];
                 while (isValidIdentSymbol(source[++pos]))
-					temp += source[pos];
-				if (temp == "true" || temp == "false")
-				{
-					cur.Type = TokenType.Constant;
-					cur.ConstType = ConstantType.Bool;
-				}
-				// For Lab 4
-				//if (temp == "and" || temp == "or")
-				//{
-				//    cur.Type = TokenType.Operator;
-				//    cur.Operation = Operation.From(temp);
-				//}
+                    temp += source[pos];
+                if (temp == "true" || temp == "false")
+                {
+                    cur.Type = TokenType.Constant;
+                    cur.ConstType = ConstantType.Bool;
+                }
 				else if (temp == "null")
 				{
 					cur.Type = TokenType.Constant;
@@ -195,8 +189,8 @@ namespace Translator
 				}
 				else if (temp == "new")
 				{
-					cur.Type = TokenType.Constant;
-					cur.ConstType = ConstantType.Null;
+                    cur.Type = TokenType.Operator;
+                    cur.Operation = Operation.From("new");
 				}
                 else
                     cur.Type = TokenType.Identifier;

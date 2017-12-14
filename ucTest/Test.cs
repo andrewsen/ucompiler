@@ -1,6 +1,7 @@
 ﻿using NUnit.Framework;
 using System;
 using Translator;
+using System.Collections.Generic;
 
 namespace ucTest
 {
@@ -8,8 +9,27 @@ namespace ucTest
     public class Test
     {
         private Compiler compiler;
-        private const string testExpr1 = @"a + b * c + d";
-        private const string testExpr2 = @"x = 3 - ++i;";
+        private const string testExpr1 = @"double x = 2 + 3.0 * 4;";
+        private const string testExpr2 = 
+@"
+class Test
+{
+    public int number;
+
+    public Test();
+
+    private double fun(int x)
+    {
+        int val = x + 4;
+        double res = fun(val) + x;
+    }
+
+    private void testf()
+    {
+        double x = number + fun(4) * 4.3;
+    }
+}
+";
         private const string testExpr3 = @"x = 3 - i++;";
         private const string testExpr4 = @"y = x.fun();"; // x fld . fun . () next .
         private const string testExpr5 = @"gen(1, a+(b*c), 3+2, true);";
@@ -27,43 +47,53 @@ namespace ucTest
         [Test]
         public void TestExpression1()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr1, "<test>"), ParsingPolicy.Semicolon));
+            //PrintExpression(compiler.evalExpression(new TokenStream(testExpr1, "<test>"), ParsingPolicy.Semicolon));
+            CodeBlock root = new CodeBlock();
+            var stream = new TokenStream(testExpr1, "<test>");
+            stream.Next();
+            compiler.evalStatement(root, stream);
+            Assert.NotNull(root);
         }
 
         [Test]
         public void TestExpression2()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr2, "<test>"), ParsingPolicy.Semicolon));
+            compiler = new Compiler(new CompilerConfig()
+            {
+                Sources = { testExpr2 }
+            });
+            compiler.Compile();
+            Assert.NotNull(compiler);
         }
 
-        [Test]
+        //[Test]
         public void TestExpression3()
         {
             PrintExpression(compiler.evalExpression(new TokenStream(testExpr3, "<test>"), ParsingPolicy.Semicolon));
         }
 
-        [Test]
+        //[Test]
         public void TestExpression4()
         {
             PrintExpression(compiler.evalExpression(new TokenStream(testExpr4, "<test>"), ParsingPolicy.Semicolon));
         }
 
-        [Test]
+        //[Test]
         public void TestExpression5()
         {
             PrintExpression(compiler.evalExpression(new TokenStream(testExpr5, "<test>"), ParsingPolicy.Semicolon));
         }
 
-        [Test]
+        //[Test]
         public void TestExpression6()
         {
             PrintExpression(compiler.evalExpression(new TokenStream(testExpr6, "<test>"), ParsingPolicy.Semicolon));
         }
 
-        private void PrintExpression(Expression expression)
+        private void PrintExpression(List<Token> expression)
         {
             var result = "";
-            foreach(var t in expression.Tokens)
+            foreach(var t in expression)
             {
                 result += t + " ";
             }

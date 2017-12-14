@@ -27,6 +27,8 @@ namespace Translator
         ArrayGet, ArrayMutate,
         Getter, Setter,
         New,
+        NewObj,
+        NewArr,
         Assign,
         AssignAdd, AssignSub, AssignMul, AssignDiv, AssignMod, AssignBinOr, AssignBinAnd, AssignXor, AssignShiftLeft, AssignShiftRight,
         FunctionCall,
@@ -105,7 +107,16 @@ namespace Translator
         UnexpectedToken,
         NotImplemented,
         FunctionName,
-        InvalidMemberAccess
+        InvalidMemberAccess,
+        InternalError,
+        UndeclaredIdentifier,
+        ClassNotFound,
+        AssignmentExpected,
+        ConsructorExpected,
+        ArraySpec,
+        AmbigiousOverload,
+        MethodNotFound,
+        ConstructorName
     }
 
     public enum DeclarationForm

@@ -43,7 +43,18 @@ namespace Translator
 
     class ClassList : List<ClassType>
     {
-        
+        public ClassType Find(Token token)
+        {
+            return Find(token.Representation, token.Position);
+        }
+
+        public ClassType Find(string name, SourcePosition position)
+        {
+            var res = Find(c => c.Name == name);
+            if (res is null)
+                InfoProvider.AddFatal($"Class `{name}` not found", ExceptionType.ClassNotFound, position);
+            return res;
+        }
     }
 
     class Metadata : IDirective
@@ -89,12 +100,19 @@ namespace Translator
 
         private static int errorCount = 0;
 
-        public static void AddError(string what, ExceptionType ex, SourcePosition where)
-        {                
+        public static void AddFatal(string what, ExceptionType ex, SourcePosition where)
+        {
             Add(InfoType.Error, what, ex, where);
             errorCount++;
-            if(errorCount >  ErrorLimit)
-                ErrorLimitReached?.Invoke();            
+            ErrorLimitReached?.Invoke();
+        }
+
+        public static void AddError(string what, ExceptionType ex, SourcePosition where)
+        {
+            Add(InfoType.Error, what, ex, where);
+            errorCount++;
+            if (errorCount > ErrorLimit)
+                ErrorLimitReached?.Invoke();
         }
 
         public static void AddWarning(string what, ExceptionType ex, SourcePosition where)
@@ -131,11 +149,12 @@ namespace Translator
                         Console.ForegroundColor = ConsoleColor.DarkGreen;
                         break;
                 }
-                Console.Write(i.Type);
+                Console.Write("{0} ", i.Type);
                 Console.ForegroundColor = ConsoleColor.DarkMagenta;
-                Console.WriteLine(" at " + i.Where);
+                Console.WriteLine("{0}: {1} ", i.ExceptionType, i.What);
                 Console.ForegroundColor = color;
-                Console.WriteLine("\t`{0}`:{1}", i.ExceptionType, i.What);
+                Console.WriteLine("at {0}", i.Where);
+                //Console.WriteLine("\t`{0}`:{1}", i.ExceptionType, i.What);
             }
         }
     }

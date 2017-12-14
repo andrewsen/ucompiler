@@ -76,6 +76,11 @@ namespace Translator
             return string.Format(Type.ToString().ToLower());
         }
 
+        public bool CanCastTo(PlainType toPlain)
+        {
+            return toPlain.Type > Type && toPlain.Type <= DataTypes.I64;
+        }
+
         public bool Equals(IType other)
         {
             if (!(other is PlainType))
@@ -108,7 +113,7 @@ namespace Translator
             fieldConstructor.Parameters = new ParameterList();
             fieldConstructor.Scope = Scope.Private;
 
-            SymbolTable.Add(fieldConstructor);
+            //SymbolTable.Add(fieldConstructor);
 		}
 
 		public override string ToString()
@@ -121,6 +126,11 @@ namespace Translator
             if (!(other is ClassType clazz))
                 return false;
             return clazz.Name == Name;
+        }
+
+        public bool DerivatesFrom(ClassType supposedParent)
+        {
+            return Parent != null && (Parent.Name == supposedParent.Name || Parent.DerivatesFrom(supposedParent));
         }
 
         public bool HasDeclaration(Token variable)
@@ -140,13 +150,35 @@ namespace Translator
 
         public INamedDataElement FindDeclarationRecursively(Token token)
         {
-            return FindDeclaration(token) ?? Parent?.FindDeclarationRecursively(token);
+            return FindDeclaration(token) ?? Parent?.findDeclarationClosure(token);
         }
 
-        public INamedDataElement FindMethod(Token token, List<IType> paramList)
+        public INamedDataElement findDeclarationClosure(Token token)
+        {
+            return FindDeclaration(token) ?? Parent?.findDeclarationClosure(token);
+        }
+
+        public INamedDataElement ResolveMethod(Token token, List<IType> paramList)
         {
             var methods = SymbolTable.Methods;
-            var suitted = methods.Where(m => m.Name == token.Representation && m.ParametersFitsArgs(paramList));
+            var suitted = methods.Where(m => m.Name == token.Representation && m.ParametersFitsArgs(paramList)).ToList();
+            if (suitted.Count > 1)
+                InfoProvider.AddError("Can't resolve method. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
+            else if (suitted.Count == 0)
+                InfoProvider.AddError("Can't resolve method. Method not found", ExceptionType.MethodNotFound, token.Position);
+
+            return suitted.First();
+        }
+
+        public INamedDataElement ResolveConstructor(Token token, List<IType> paramList)
+        {
+            var suitted = SymbolTable.Methods.Where(c => c.Name == Name && c.Type == null && c.ParametersFitsArgs(paramList)).ToList();
+            if (suitted.Count > 1)
+                InfoProvider.AddError("Can't resolve method. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
+            else if (suitted.Count == 0)
+                InfoProvider.AddError("Can't resolve method. Method not found", ExceptionType.MethodNotFound, token.Position);
+
+            return suitted.First();
         }
     }
 
@@ -156,6 +188,16 @@ namespace Translator
         public IType Inner;
 
         public DataTypes Type => DataTypes.Array;
+
+        public IType ElementType 
+        { 
+            get
+            {
+                if (Dimensions == 1)
+                    return Inner;
+                return new ArrayType(Inner, Dimensions - 1);
+            }
+        }
 
         public ArrayType(IType inner, int dimens)
         {

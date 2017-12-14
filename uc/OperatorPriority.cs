@@ -54,6 +54,10 @@ namespace uc
 
             switch(view)
             {
+                case "new":
+                    result.Type = OperationType.New;
+                    result.Priority = 12; // TODO: Fix
+                    break;
                 case ".":
                     result.Type = OperationType.MemberAccess;
                     result.Priority = 12; // TODO: Fix
@@ -85,10 +89,6 @@ namespace uc
 				case "&":
 					result.Type = OperationType.BinAnd;
 					result.Priority = 6;
-					break;
-				case "new":
-                    result.Type = OperationType.New;
-					result.Priority = 12;
 					break;
                 case "()":
 					result.Type = OperationType.FunctionCall;

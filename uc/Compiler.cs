@@ -29,7 +29,7 @@ namespace Translator
                 parseGlobalScope(src);
             }
 
-            foreach(var clazz in classList)
+            foreach (var clazz in classList)
             {
                 compileClass(clazz);
             }
@@ -44,7 +44,7 @@ namespace Translator
 
         private void compileClass(ClassType clazz)
         {
-            foreach(var method in clazz.SymbolTable.Methods)
+            foreach (var method in clazz.SymbolTable.Methods)
             {
                 evalMethod(method);
             }
@@ -52,7 +52,9 @@ namespace Translator
 
         private void parseGlobalScope(string src)
         {
-            TokenStream gStream = new TokenStream(File.ReadAllText(src), src);
+            // FIXME: Only for testing
+            //TokenStream gStream = new TokenStream(File.ReadAllText(src), src);
+            TokenStream gStream = new TokenStream(src, "<testing>");
 
             while (!gStream.NextEof())
             {
@@ -117,11 +119,11 @@ namespace Translator
                                 md.Type = DataTypes.Void;
                         }
                         var mlist = from m in metadataList
-                                      where m.Key == md.Key
-                                        select m;
+                                    where m.Key == md.Key
+                                    select m;
                         if (mlist.ToList().Count != 0)
                             InfoProvider.AddError("Meta key " + md.Key + " exists", ExceptionType.MetaKeyExists, gStream.SourcePosition);
-                            //throw new CompilerException(ExceptionType.MetaKeyExists, "Meta key " + md.key + " in module " + CommandArgs.source + " exists", tokens);
+                        //throw new CompilerException(ExceptionType.MetaKeyExists, "Meta key " + md.key + " in module " + CommandArgs.source + " exists", tokens);
 
                         metadataList.Add(md);
                     }
@@ -129,26 +131,26 @@ namespace Translator
                 case "Module":
                     if (attr.Data.Count != 1 && !(attr.Data[0].Value is string))
                         InfoProvider.AddError("@Module: Incorrect name", ExceptionType.AttributeException, gStream.SourcePosition);
-                        //throw new AttributeException("Module", "Incorrect module name");
+                    //throw new AttributeException("Module", "Incorrect module name");
                     if (compilerConfig.OutBinaryFile == null)
                         compilerConfig.OutBinaryFile = (attr.Data[0].Value as string) + ".vas"; // TODO: FIXME
                     break;
                 case "RuntimeInternal":
                     if (attr.Data.Count != 0)
                         InfoProvider.AddError("@RuntimeInternal: Too many arguments", ExceptionType.AttributeException, gStream.SourcePosition);
-                        //throw new AttributeException("RuntimeInternal", "Too many arguments");
+                    //throw new AttributeException("RuntimeInternal", "Too many arguments");
                     if (!attr.Binded)
                         InfoProvider.AddError("@RuntimeInternal must be binded to method (check `;`)", ExceptionType.AttributeException, gStream.SourcePosition);
-                        //throw new AttributeException("RuntimeInternal", "`@RuntimeInternal` must be binded to function (check `;`)");
+                    //throw new AttributeException("RuntimeInternal", "`@RuntimeInternal` must be binded to function (check `;`)");
                     bindedAttributeList.Add(attr);
                     break;
                 case "Entry":
                     if (attr.Data.Count != 0)
                         InfoProvider.AddError("@Entry: Too many arguments", ExceptionType.AttributeException, gStream.SourcePosition);
-                        //throw new AttributeException("Entry", "Too many arguments");
+                    //throw new AttributeException("Entry", "Too many arguments");
                     if (!attr.Binded)
                         InfoProvider.AddError("@Entry must be binded to method (check `;`)", ExceptionType.AttributeException, gStream.SourcePosition);
-                        //throw new AttributeException("Entry", "`@Entry` must be binded to function (check `;`)");
+                    //throw new AttributeException("Entry", "`@Entry` must be binded to function (check `;`)");
                     bindedAttributeList.Add(attr);
                     break;
                 case "Debug:Set":
@@ -162,7 +164,7 @@ namespace Translator
                             InfoProvider.AddError("@Debug:Set: Incorrect data", ExceptionType.AttributeException, gStream.SourcePosition);
                             //throw new AttributeException("Debug:Set", "Incorrect data");
                         }
-                        RuntimeMetadata md = new RuntimeMetadata();                       
+                        RuntimeMetadata md = new RuntimeMetadata();
                         md.Prefix = attr.Name;
                         if (attr.Data[0].IsOptional)
                         {
@@ -182,8 +184,8 @@ namespace Translator
                                 md.Type = DataTypes.Void;
                         }
                         var mlist = from m in metadataList
-                                      where m.Key == md.Key
-                                          select m;
+                                    where m.Key == md.Key
+                                    select m;
                         if (mlist.ToList().Count != 0)
                         {
                             foreach (var m in mlist)
@@ -209,7 +211,7 @@ namespace Translator
         private void parseClass(TokenStream gStream, Scope classScope)
         {
             ClassType clazz = new ClassType(gStream.GetIdentifierNext());
-			clazz.DeclarationPosition = gStream.SourcePosition;
+            clazz.DeclarationPosition = gStream.SourcePosition;
             clazz.Scope = classScope;
             clazz.AttributeList = bindedAttributeList;
             bindedAttributeList.Clear();
@@ -218,14 +220,14 @@ namespace Translator
 
             while (!gStream.Eof)
             {
-                var entry = readCommonClassEntry(gStream);
+                var entry = readCommonClassEntry(clazz, gStream);
                 entry.Class = clazz;
 
                 gStream.Next();
                 //TODO: Move attributes parsing to readCommonClassEntry()
-                if(gStream.Is(ATTR))
-				{
-					parseAttribute(gStream);
+                if (gStream.Is(ATTR))
+                {
+                    parseAttribute(gStream);
                 }
                 else if (gStream.Is(BLOCK_O) || gStream.Is(SHORT_FUNC_DECL))
                 {
@@ -234,7 +236,7 @@ namespace Translator
                         InfoProvider.AddError("Void type not allowed for properties", ExceptionType.IllegalType, gStream.SourcePosition);
                     if (entry.Modifiers.HasFlag(ClassEntryModifiers.Native))
                         InfoProvider.AddError("Properties can't be native", ExceptionType.IllegalModifier, gStream.SourcePosition);
-                    
+
                     Property property = parseProperty(entry, gStream);
 
                     clazz.SymbolTable.Add(property);
@@ -264,7 +266,7 @@ namespace Translator
                     clazz.SymbolTable.Add(field);
                 }
 
-                if(gStream.IsNext(BLOCK_C))
+                if (gStream.IsNext(BLOCK_C))
                     break;
                 gStream.PushBack();
             }
@@ -356,8 +358,8 @@ namespace Translator
             method.Parameters = paramList;
 
             if (gStream.Next() == SHORT_FUNC_DECL)
-			{
-				method.DeclarationForm = DeclarationForm.Short;
+            {
+                method.DeclarationForm = DeclarationForm.Short;
                 // Saving method start token (points after '->' symbol)
                 method.BodyStream = gStream.Fork();
             }
@@ -382,22 +384,22 @@ namespace Translator
         {
             var plist = new ParameterList();
             //gStream.Next();
-            if(gStream.IsNext(PAR_C))
+            if (gStream.IsNext(PAR_C))
                 return plist;
 
             while (!gStream.Eof)
             {
 
-                var param = new Variable();
-                
+                var param = new Parameter();
+
                 param.Type = gStream.CurrentType(false);
                 param.Name = gStream.GetIdentifierNext();
 
                 plist.Add(param);
 
-                if(gStream.IsNext(PAR_C))
+                if (gStream.IsNext(PAR_C))
                     break;
-                else if(gStream.Is(SEP))
+                else if (gStream.Is(SEP))
                     gStream.Next();
                 else
                     InfoProvider.AddError("`,` or `)` expected in parameter declaration", ExceptionType.IllegalToken, gStream.SourcePosition);
@@ -406,16 +408,30 @@ namespace Translator
             return plist;
         }
 
-        private CommonClassEntry readCommonClassEntry(TokenStream gStream)
-        {               
+        private CommonClassEntry readCommonClassEntry(ClassType clazz, TokenStream gStream)
+        {
             CommonClassEntry entry = new CommonClassEntry();
 
-			entry.AttributeList = bindedAttributeList;
-			entry.Scope = readScope(gStream);
+            entry.AttributeList = bindedAttributeList;
+            entry.Scope = readScope(gStream);
             entry.DeclarationPosition = gStream.SourcePosition;
             entry.Modifiers = readModifiers(gStream);
             entry.Type = gStream.CurrentType(true);
-            entry.Name = gStream.GetIdentifierNext();
+            if(gStream.Next().Type == TokenType.Identifier)
+                entry.Name = gStream.Current;
+            else if(gStream.Is(PAR_O, TokenType.Delimiter))
+            {
+                if (entry.Type.Type != DataTypes.Class)
+                    InfoProvider.AddError("Constructor name must be same with class name", ExceptionType.ConstructorName, gStream.SourcePosition);
+
+                var classType = entry.Type as ClassType;
+                if (classType.Name != clazz.Name)
+                    InfoProvider.AddError("Constructor name must be same with class name", ExceptionType.ConstructorName, gStream.SourcePosition);
+
+                entry.Name = clazz.Name;
+                entry.Type = null;
+                gStream.PushBack();
+            }
 
             bindedAttributeList.Clear();
 
@@ -460,7 +476,7 @@ namespace Translator
                 modifiers |= ClassEntryModifiers.Native;
                 gStream.Next();
             }
-            else if(token == CONST) 
+            else if (token == CONST)
             {
                 modifiers |= ClassEntryModifiers.Const;
                 gStream.Next();
@@ -472,7 +488,7 @@ namespace Translator
         {
             if (method.DeclarationForm == DeclarationForm.Full)
             {
-                method.Body = evalBlock(new CodeBlock(method.Class, method.Class), method.BodyStream);
+                method.Body = evalBlock(new CodeBlock(method.Class, method.Class, method), method.BodyStream);
                 method.Body.Parent = method.Class;
                 method.Body.ClassContext = method.Class;
             }
@@ -484,54 +500,86 @@ namespace Translator
         {
             CodeBlock block = new CodeBlock(parent);
 
-            var entryToken = lStream.Next();
-
-            if (!(entryToken.IsIdentifier() || entryToken.IsOp() || (entryToken.IsDelim() && entryToken.Representation == BLOCK_O)))
-                InfoProvider.AddError("Identifier, control keyword, type or block expected", ExceptionType.IllegalToken, lStream.SourcePosition);
-
-            switch(entryToken.Representation)
+            while (!lStream.Eof)
             {
-                case IF:
-                    break;
-                case FOR:
-                    break;
-                case WHILE:
-                    break;
-                case DO:
-                    break;
-                case SWITCH:
-                    break;
-                case FOREACH:
-                    break;
-                case RETURN:
-                    break;
-                case BLOCK_O:
-                    break;
-                default:
-                    evalStatement(parent, lStream);
-                    break;
+                var entryToken = lStream.Next();
+
+                if (!(entryToken.IsIdentifier() || entryToken.IsOp() || (entryToken.IsOneOf(TokenType.Delimiter, BLOCK_C))))
+                    InfoProvider.AddError("Identifier, control keyword, type or block expected", ExceptionType.IllegalToken, lStream.SourcePosition);
+
+                switch (entryToken.Representation)
+                {
+                    case IF:
+                        break;
+                    case FOR:
+                        break;
+                    case WHILE:
+                        break;
+                    case DO:
+                        break;
+                    case SWITCH:
+                        break;
+                    case FOREACH:
+                        break;
+                    case RETURN:
+                        break;
+                    case BLOCK_C:
+                        return block;
+                    default:
+                        evalStatement(parent, lStream);
+                        break;
+                }
             }
 
             return block;
         }
 
-        private void evalStatement(CodeBlock parent, TokenStream lStream)
+        public void evalStatement(CodeBlock parent, TokenStream lStream)
         {
             if (isRegisteredType(lStream.Current))
+            {
                 evalLocalVarDeclaration(parent, lStream);
 
-            lStream.PushBack();
+                if (lStream.IsNext(SEP, TokenType.Semicolon))
+                    return;
+                if (!lStream.Is(ASSIGN, TokenType.Operator))
+                    InfoProvider.AddError("Assignment operator expected after variable declaration", ExceptionType.AssignmentExpected, lStream.SourcePosition);
+                lStream.PushBack();
+            }
+
+            var pos = lStream.SourcePosition;
             var expr = evalExpression(lStream);
             var rootNode = expressionToAST(expr);
-            //assignTypes(rootNode, parent);
+            assignTypes(rootNode, parent);
+            parent.Expressions.Add(new Expression(rootNode, pos));
         }
 
         private void evalLocalVarDeclaration(CodeBlock parent, TokenStream lStream)
         {
+            var declPosition = lStream.SourcePosition;
+            var type = lStream.CurrentType(false);
+            if(type is ClassType clazz)
+            {
+                type = classList.Find(clazz.Name, lStream.SourcePosition);
+            }
+            else if(type is ArrayType array && array.Inner is ClassType innerClazz)
+            {
+                type = classList.Find(innerClazz.Name, lStream.SourcePosition);
+            }
 
+            var name = lStream.GetIdentifierNext();
+
+            Variable local = new Variable()
+            {
+                Name = name,
+                Type = type,
+                DeclarationPosition = declPosition,
+            };
+
+            parent.Locals.Add(local);
         }
 
-        public Expression evalExpression(TokenStream stream, ParsingPolicy parsingPolicy = ParsingPolicy.Brackets)
+        public List<Token> evalExpression(TokenStream stream, ParsingPolicy parsingPolicy = ParsingPolicy.Semicolon)
         {
             // TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
 
@@ -563,7 +611,7 @@ namespace Translator
                 throw new ArgumentOutOfRangeException(nameof(parsingPolicy), "Invalid parsing policy");
             }
 
-            while (satisfiesPolicy(stream.Next()))
+            while (satisfiesPolicy(stream.Current))
             {
                 var token = stream.Current;
                 if (token.IsConstant() || token.IsIdentifier())
@@ -598,6 +646,28 @@ namespace Translator
                             token.Operation.Association = Association.Right;
                         }
                     }
+                    else if(token.Operation.Is(OperationType.New))
+                    {
+                        var sourcePosition = stream.SourcePosition;
+                        var tokenPosition = stream.TokenPosition;
+                        var type = stream.NextTypeSoft();
+
+                        if(stream.IsNext(PAR_O, TokenType.Delimiter))
+                        {
+                            if (!(type is ClassType))
+                                InfoProvider.AddError("Operator `new` not appliable to this type", ExceptionType.IllegalType, sourcePosition);
+                            token.Operation.Type = OperationType.NewObj;
+                            stream.TokenPosition = tokenPosition; // Next token will be identifier - constructor call
+                        }
+                        else if(stream.Is(INDEXER_O, TokenType.Delimiter))
+                        {
+                            stream.PushBack();
+                            token.Operation.Type = OperationType.NewArr;
+                            token.Representation = "new[]";
+                            resultingExpression.Add(new TypedToken(type) { Position = sourcePosition });
+                        }
+                    }
+
                     while (opStack.Count > 0 && opStack.Peek().IsOp())
                     {
                         if ((token.Operation.Association == Association.Left && token.Operation.Priority <= opStack.Peek().Operation.Priority)
@@ -667,13 +737,13 @@ namespace Translator
                         {
                             callToken.Operation.ArgumentCount = 1;
                             int callBracketsCount = 1;
-                            while(!lookupStream.Eof && callBracketsCount > 0)
+                            while (!lookupStream.Eof && callBracketsCount > 0)
                             {
                                 if (lookupStream.IsNext(PAR_C, TokenType.Delimiter))
                                     callBracketsCount--;
                                 else if (lookupStream.Is(PAR_O))
                                     callBracketsCount++;
-                                else if(callBracketsCount == 1 && lookupStream.Is(SEP, TokenType.Delimiter))
+                                else if (callBracketsCount == 1 && lookupStream.Is(SEP, TokenType.Delimiter))
                                     callToken.Operation.ArgumentCount++;
                             }
                         }
@@ -730,6 +800,7 @@ namespace Translator
                     lastToken = token;
                     //isUnary = true;
                 }
+                token = stream.Next();
             }
             while (opStack.Count > 0)
             {
@@ -740,12 +811,12 @@ namespace Translator
                     InfoProvider.AddError("`]` is missed", ExceptionType.Brace, stream.SourcePosition);
                 resultingExpression.Add(op);
             }
-            return new Expression(resultingExpression, stream.SourcePosition);
+            return resultingExpression;
         }
 
-        public Node expressionToAST(Expression expr)
+        public Node expressionToAST(List<Token> expr)
         {
-            return makeASTNode(new Stack<Token>(expr.Tokens));
+            return makeASTNode(new Stack<Token>(expr));
         }
 
         private Node makeASTNode(Stack<Token> polish)
@@ -813,16 +884,88 @@ namespace Translator
                     var parameter = method.Parameters[argc - i - 1];
 
                     // Casting if not equal types
-                    if(!parameter.Type.Equals(child.Type))
+                    if (!parameter.Type.Equals(child.Type))
                     {
-                        Node converter = new Node(new Token { Type = TokenType.Operator, Operation = Operation.Cast, Position = node.Children[i].Token.Position});
+                        Node converter = new Node(new Token { Type = TokenType.Operator, Operation = Operation.Cast, Position = node.Children[i].Token.Position });
                         converter.Type = parameter.Type;
                         converter.Left = child;
                         node.Children[i] = converter;
                     }
                 }
+                node.Type = invokable.Type;
             }
-            if (node.Token.IsOp(OperationType.MemberAccess))
+            else if(node.Token.IsOp(OperationType.NewObj))
+            {
+                if (node.Children.Count != 1 || !node.Left.Token.IsOp(OperationType.FunctionCall))
+                    InfoProvider.AddFatal("Constructor call expected in `new` statement", ExceptionType.ConsructorExpected, node.Token.Position);
+
+                var constructorNode = node.Left;
+
+                for (int i = 0; i < constructorNode.Children.Count - 1; ++i)
+                {
+                    var child = constructorNode.Children[i];
+                    assignTypes(child, parent);
+                    methodArgs.Add(child.Type);
+                }
+
+                var type = constructorNode.Left;
+                var clazz = classList.Find(type.Token);
+                var constructor = clazz.ResolveConstructor(type.Token, methodArgs) as Method;
+                constructorNode.RelatedNamedData = constructor;
+
+                int argc = constructorNode.Children.Count - 1;
+                for (int i = 0; i < argc; ++i)
+                {
+                    var child = constructorNode.Children[i];
+                    var parameter = constructor.Parameters[argc - i - 1];
+
+                    // Casting if not equal types
+                    if (!parameter.Type.Equals(child.Type))
+                    {
+                        Node converter = new Node(new Token 
+                        { 
+                            Type = TokenType.Operator, 
+                            Operation = Operation.Cast, 
+                            Position = constructorNode.Children[i].Token.Position 
+                        });
+                        converter.Type = parameter.Type;
+                        converter.Left = child;
+                        constructorNode.Children[i] = converter;
+                    }
+                }
+
+                // Now newobj node has type (class type), all subnodes from class constructor call, and assigned constructor instance
+                node.Type = clazz;
+                node.Children = constructorNode.Children.GetRange(0, argc);
+                node.RelatedNamedData = constructor;
+            }
+            else if (node.Token.IsOp(OperationType.NewArr))
+            {
+                if (node.Children.Count != 1 || !node.Left.Token.IsOp(OperationType.ArrayGet))
+                    InfoProvider.AddFatal("Array size specification in `new` statement expected", ExceptionType.ArraySpec, node.Token.Position);
+
+                node.Children = node.Left.Children;
+                if (!(node.Left.Token is TypedToken))
+                    InfoProvider.AddFatal("Typed token expected", ExceptionType.InternalError, node.Token.Position);
+
+                var type = (node.Left.Token as TypedToken).BoundType;
+
+                IType typeToCheck;
+                if (type is ArrayType arrayType)
+                {
+                    typeToCheck = arrayType.Inner;
+                    node.Type = new ArrayType(typeToCheck, arrayType.Dimensions + 1);
+                }
+                else
+                {
+                    typeToCheck = type;
+                    node.Type = new ArrayType(typeToCheck, 1);
+                }
+
+                if (typeToCheck is ClassType clazz && !classList.Exists(c => c.Name == clazz.Name))
+                        InfoProvider.AddFatal("Unknown type in `new array` operator", ExceptionType.IllegalType, node.Token.Position);
+            }
+            else if (node.Token.IsOp(OperationType.MemberAccess))
             {
                 // x.f() - x y . ()
                 var owner = node.Left;
@@ -842,27 +985,39 @@ namespace Translator
                     var decl = ownerClass.FindDeclaration(member.Token);
                     member.Type = node.Type = decl.Type;
                     member.RelatedNamedData = node.RelatedNamedData = decl;
+                    assignOperationType(node, node.Left, node.Right);
                 }
                 else // method
                 {
                     // TODO: Encapsulation
-                    var decl = ownerClass.FindMethod(member.Token, paramList);
+                    var decl = ownerClass.ResolveMethod(member.Token, paramList);
                     member.Type = node.Type = decl.Type;
                     member.RelatedNamedData = node.RelatedNamedData = decl;
+                    assignOperationType(node, node.Left, node.Right);
                 }
             }
-            if (node.Token.IsOp())
+            else if (node.Token.IsOp())
             {
                 if (node.Children.Count == 1)
                 {
                     assignTypes(node.Left, parent);
                     node.Type = node.Left.Type;
+                    assignOperationType(node, node.Left);
+
+                    if (node.Right.Token.Type == TokenType.Identifier && node.Right.RelatedNamedData is Variable rValueLocal)
+                        rValueLocal.IsUsed = true;
                 }
                 else if (node.Children.Count == 2)
                 {
                     assignTypes(node.Right, parent);
                     assignTypes(node.Left, parent);
-                    //node.Type = getHightestType(node.Left, node.Right);
+                    assignOperationType(node, node.Left, node.Right);
+
+                    if (node.Left.Token.Type == TokenType.Identifier && node.Token.IsOp(OperationType.Assign) && node.Left.RelatedNamedData is Variable lValueLocal)
+                        lValueLocal.IsAssigned = true;
+                    if (node.Right.Token.Type == TokenType.Identifier && node.Right.RelatedNamedData is Variable rValueLocal)
+                        rValueLocal.IsUsed = true;
+                        
                 }
                 else // WTF. Can't be
                     InfoProvider.AddError("Too many childrens in operator", ExceptionType.InternalError, node.Token.Position);
@@ -871,7 +1026,7 @@ namespace Translator
             {
                 node.Type = new PlainType((DataTypes)node.Token.ConstType);
             }
-            else if(node.Token.IsIdentifier())
+            else if (node.Token.IsIdentifier())
             {
                 var local = parent.FindDeclarationRecursively(node.Token);
                 if (local != null)
@@ -879,35 +1034,131 @@ namespace Translator
                     node.RelatedNamedData = local;
                     node.Type = local.Type;
                 }
-                else if(paramList != null)
+                else if (paramList != null)
                 {
-                    var method = parent.ClassContext.FindMethod(node.Token, paramList);
+                    var method = parent.ClassContext.ResolveMethod(node.Token, paramList);
                     node.Type = method.Type;
                     node.RelatedNamedData = method;
                 }
+                else
+                    InfoProvider.AddError("Can't resolve identifier", ExceptionType.UndeclaredIdentifier, node.Token.Position);
             }
+        }
+
+        private void assignOperationType(Node operationNode, Node operand)
+        {
+            var operation = operationNode.Token.Operation;
+            int typeIndex = (int)operand.Type.Type;
+
+            IType result = null;
+            DataTypes resultType = DataTypes.Null;
+
+            if(TypeMatrices.OperationVectorLUT.ContainsKey(operation.Type))
+            {
+                var typeVector = TypeMatrices.OperationVectorLUT[operation.Type];
+                resultType = typeVector[typeIndex];
+                result = operand.Type;
+            }
+            else
+            {
+                InfoProvider.AddFatal($"Operator {operation.View} can't be resolved", ExceptionType.InternalError, operationNode.Token.Position);
+            }
+            operationNode.Type = result;
+        }
+
+        private void assignOperationType(Node operationNode, Node left, Node right)
+        {
+            var operation = operationNode.Token.Operation;
+
+            int leftTypeIndex = (int)left.Type.Type;
+            int rightTypeIndex = (int)right.Type.Type;
+
+            IType result = null;
+            Node castingNode;
+            DataTypes resultType = DataTypes.Null;
+
+            if (TypeMatrices.OperationMatrixLUT.ContainsKey(operation.Type))
+            {
+                var typeMatrix = TypeMatrices.OperationMatrixLUT[operation.Type];
+                resultType = typeMatrix[leftTypeIndex, rightTypeIndex];
+
+                // TODO: Specify types directly
+                if (resultType != DataTypes.Null && !operation.Is(OperationType.ArrayGet, OperationType.MemberAccess))
+                {
+                    var hightestType = TypeMatrices.ImplicitCastMatrix[leftTypeIndex, rightTypeIndex];
+                    if (left.Type.Type == hightestType)
+                    {
+                        // Insert type casting node to right argument
+                        castingNode = createCastingNode(right, left); //createCasingNode(from, to)
+                        castingNode.Left = right;
+                        operationNode.Right = castingNode;
+                        result = left.Type;
+                    }
+                    else
+                    {
+                        // Insert type casting node to left argument
+                        castingNode = createCastingNode(right, left); //createCasingNode(from, to)
+                        castingNode.Left = left;
+                        operationNode.Left = castingNode;
+                        result = left.Type;
+                    }
+                    result = new PlainType(resultType);
+                }
+                else if(operation.Is(OperationType.MemberAccess))
+                {
+                    result = right.Type;
+                }
+            }
+            else if (operation.Type == OperationType.ArrayGet)
+            {
+                if (left.Type is ArrayType array)
+                {
+                    if(!isIntegerType(right.Type.Type))
+                        InfoProvider.AddFatal($"Array index type must be integer. Now `{right.Type.ToString()}`", ExceptionType.IllegalType, operationNode.Token.Position);
+                    result = array.ElementType;
+                    resultType = result.Type;
+                }
+                InfoProvider.AddFatal($"Indexable type must be an array. Now `{left.Type.ToString()}`", ExceptionType.IllegalType, operationNode.Token.Position);
+            }
+            else
+            {
+                InfoProvider.AddFatal($"Operator {operation.View} can't be resolved", ExceptionType.InternalError, operationNode.Token.Position);
+            }
+
+            if (resultType == DataTypes.Null)
+                InfoProvider.AddFatal($"Unacceptable operands type combination in operator `{operation.View}` - ({left.Type.ToString()}, {right.Type.ToString()})", 
+                                     ExceptionType.IllegalType, operationNode.Token.Position);
+
+            operationNode.Type = result;
+        }
+
+        private Node createCastingNode(Node from, Node to)
+        {
+            var node = new Node(new Token { Type = TokenType.Operator, Operation = Operation.Cast, Position = from.Token.Position });
+            node.Type = to.Type;
+            return node;
         }
 
         private void compileFile(string src)
         {
-            foreach(var clazz in classList)
-			{
-				Console.WriteLine("Class `{0}`", clazz.Name);
-				Console.WriteLine("\tFields:");
-				foreach (var field in clazz.SymbolTable.Fields)
-					Console.WriteLine("\t\t{0}, {1} `{2}` of type `{3}`", field.Modifiers, field.Scope, field.Name, field.Type.ToString());
-				Console.WriteLine("\tProperties:");
-				foreach (var prop in clazz.SymbolTable.Properties)
-					Console.WriteLine("\t\t{0}, {1}, `{2}` of type `{3}`", prop.Modifiers, prop.Scope, prop.Name, prop.Type.ToString());
-				Console.WriteLine("\tMethods:");
+            foreach (var clazz in classList)
+            {
+                Console.WriteLine("Class `{0}`", clazz.Name);
+                Console.WriteLine("\tFields:");
+                foreach (var field in clazz.SymbolTable.Fields)
+                    Console.WriteLine("\t\t{0}, {1} `{2}` of type `{3}`", field.Modifiers, field.Scope, field.Name, field.Type.ToString());
+                Console.WriteLine("\tProperties:");
+                foreach (var prop in clazz.SymbolTable.Properties)
+                    Console.WriteLine("\t\t{0}, {1}, `{2}` of type `{3}`", prop.Modifiers, prop.Scope, prop.Name, prop.Type.ToString());
+                Console.WriteLine("\tMethods:");
                 foreach (var method in clazz.SymbolTable.Methods)
-                    Console.WriteLine("\t\t{0}, {1} `{2}` of type `{3}` with params `{4}`", 
-                                      method.Modifiers, method.Scope, method.Name, method.Type.ToString(), method.Parameters.ToString());
+                    Console.WriteLine("\t\t{0}, {1} `{2}` of type `{3}` with params `{4}`",
+                                      method.Modifiers, method.Scope, method.Name, method.Type, method.Parameters.ToString());
             }
             InfoProvider.Print();
         }
 
-        public static bool IsPlainType(string type, bool includeVoid=false)
+        public static bool IsPlainType(string type, bool includeVoid = false)
         {
             var dt = PlainType.FromString(type);
             return !(dt == DataTypes.Null || (dt == DataTypes.Void && includeVoid));
@@ -920,183 +1171,32 @@ namespace Translator
             return classList.Exists(c => c.Name == type);
         }
 
-        //
-        // Parse
-        //
-
-        [Obsolete]
-        public Expression parseExpression(TokenStream stream)
+        /// <summary>
+        /// Determines if one type can be implicitly casted to another
+        /// It can be in two situations:
+        ///     1. Source type is derived from target type
+        ///     2. Source type is integer and target type is also integer but with highter range
+        /// </summary>
+        /// <returns><c>true</c>, if implicit cast is acceptable, <c>false</c> otherwise.</returns>
+        /// <param name="fromType">Source type (from what we cast)</param>
+        /// <param name="toType">Target type (to what we cast)</param>
+        public static bool CanCast(IType fromType, IType toType)
         {
-			// TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
-
-			List<Token> resultingExpression = new List<Token>();
-			Stack<int> functionArgCounter = new Stack<int>();
-			Stack<Token> opStack = new Stack<Token>();
-            Token lastToken = Token.EOF;
-
-            while(stream.Next().Type != TokenType.Semicolon)
-			{
-                //Console.WriteLine($"Current {gStream.Current}");
-                //if(gStream.Current.Type == TokenType.EOF)
-                //{
-                //    InfoProvider.AddError("Semicilion `;` is missed", ExceptionType.SemicolonExpected, gStream.SourcePosition);
-                //    break;
-                //}
-				var token = stream.Current;
-                if(token.IsConstant() || token.IsIdentifier())
-				{
-                    if (lastToken.IsOneOf(PAR_C, INDEXER_C))
-						InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, stream.SourcePosition);
-                    if (lastToken.IsIdentifier())
-                        InfoProvider.AddError("Unexpected identifier", ExceptionType.BadExpression, stream.SourcePosition);
-                    resultingExpression.Add(token);
-                    lastToken = token;
-                }
-                if (token.IsOp())
-                {
-                    /*
-                     * Пока присутствует на вершине стека токен оператор op2, и
-					 * Либо оператор op1 лево-ассоциативен и его приоритет меньше, чем у оператора op2 либо равен,
-					 * или оператор op1 право-ассоциативен и его приоритет меньше, чем у op2,
-					 * переложить op2 из стека в выходную очередь;
-					*/
-                    while (opStack.Count > 0 && opStack.Peek().IsOp())
-                    {
-                        if ((token.Operation.Association == Association.Left && token.Operation.Priority < opStack.Peek().Operation.Priority)
-                           || (token.Operation.Association == Association.Right && token.Operation.Priority <= opStack.Peek().Operation.Priority))
-                        {
-                            resultingExpression.Add(opStack.Pop());
-                        }
-                        else
-                            break;
-                    }
-                    opStack.Push(token);
-                    lastToken = token;
-                }
-                else if (token == INDEXER_O)
-				{
-                    if (lastToken.IsOp())
-						InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, stream.SourcePosition);
-					opStack.Push(token);
-                    lastToken = token;
-                }
-                else if (token == INDEXER_C)
-                {
-                    // a = b[c + 4];
-                    // a b[c + 4] - 6 =
-                    // a b c 4 + [] 6 - =
-                    if (lastToken.IsOp())
-                        InfoProvider.AddError("Unexpected `]`", ExceptionType.Brace, stream.SourcePosition);
-
-                    while (opStack.Count > 0 && opStack.Peek() != INDEXER_O)
-                    {
-						if ((opStack.Peek() == PAR_O))
-							InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
-                        resultingExpression.Add(opStack.Pop());
-                    }
-                    if (opStack.Count == 0)
-                        InfoProvider.AddError("`[` is missed", ExceptionType.Brace, stream.SourcePosition);
-                    else
-                        opStack.Pop();
-                    token.Representation = "[]";
-                    token.Type = TokenType.Operator;
-                    token.Operation = Operation.From("[]");
-					resultingExpression.Add(token);
-					lastToken = token;
-                }
-                else if (token == PAR_O)
-				{
-                    // Process as function
-                    // x = fun(1, g(5, y*(3-i), 8));
-                    if (lastToken.IsIdentifier())
-                    {
-                        // Function call operator
-                        token.Representation = "()";
-                        token.Type = TokenType.Operator;
-                        token.Operation = Operation.From("()");
-                        functionArgCounter.Push(0);
-                    }
-                    else if (!lastToken.IsOp())
-						InfoProvider.AddError("Unexpected `(`", ExceptionType.Brace, stream.SourcePosition);
-					opStack.Push(token);
-					lastToken = token;
-                }
-                else if (token == PAR_C)
-				{
-					if (lastToken.IsOp())
-                        InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, stream.SourcePosition);
-                    while (opStack.Count > 0 && opStack.Peek() != PAR_O)
-                    {
-                        if (opStack.Peek().Operation.Type == OperationType.FunctionCall)
-                        {
-                            var callOp = opStack.Peek();
-                            callOp.Operation.ArgumentCount = functionArgCounter.Pop();
-                            resultingExpression.Add(callOp);
-                        }
-                        else
-                            resultingExpression.Add(opStack.Pop());
-                    }
-					if (opStack.Count == 0)
-                        InfoProvider.AddError("`(` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
-                    else
-						opStack.Pop();
-                }
-                else if(token == SEP)
-                {
-					if (!(lastToken.IsConstant() || lastToken.IsIdentifier() || lastToken == PAR_C || lastToken == INDEXER_C))
-                        InfoProvider.AddError("Unexpected comma", ExceptionType.UnexpectedComma, stream.SourcePosition);
-                    functionArgCounter.Push(functionArgCounter.Pop()+1);
-                }
-				//Console.Write("\tOp stack:\n\t");
-				//foreach (var op in opStack)
-				//	Console.Write($"{op} ");
-				//Console.Write("\n\tToken array:\n\t");
-				//foreach (var op in resultingExpression)
-				//	Console.Write($"{op} ");
-				//Console.WriteLine();
-            }
-            while(opStack.Count > 0)
-            {
-				var op = opStack.Pop();
-				if (op == PAR_O)
-					InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
-                if (op == INDEXER_O)
-                    InfoProvider.AddError("`]` is missed", ExceptionType.Brace, stream.SourcePosition);
-                resultingExpression.Add(op);
-			}
-            return new Expression(resultingExpression, stream.SourcePosition);
+            if (fromType is ClassType fromClass && toType is ClassType toClass)
+                return fromClass.DerivatesFrom(toClass);
+            if (fromType is PlainType fromPlain && toType is PlainType toPlain)
+                return fromPlain.CanCastTo(toPlain);
+            return false;
         }
 
-        public Node buildAST(Expression expr)
+        private bool isIntegerType(DataTypes type)
         {
-            // a b c * 4 e * + =
-            return buildNode(new Stack<Token>(expr.Tokens), expr.SourcePosition);
+            return type < DataTypes.I64;
         }
 
-        public Node buildNode(Stack<Token> rpn, SourcePosition position)
+        private bool isNumericType(DataTypes type)
         {
-            if (rpn.Count == 0)
-                return null;
-			var tok = rpn.Pop();
-
-			Node result = new Node(tok);
-			if(tok.IsOp())
-			{
-                result.Right = buildNode(rpn, position);
-				result.Left = buildNode(rpn, position);
-
-                if (result.Left == null && result.Right == null)
-                    InfoProvider.AddError($"Both arguments of {tok} is missed", ExceptionType.BadExpression, position);
-                else if (result.Left == null || result.Right == null)
-					InfoProvider.AddError($"Argument of {tok} is missed", ExceptionType.BadExpression, position);
-                else if (tok.Operation.Type == OperationType.Assign && result.Left.Token.IsConstant())
-					InfoProvider.AddError("rvalue can't be on left side of assignment operator", ExceptionType.lValueExpected, position);
-				// Pascal specific
-				else if (result.Left.Token.Operation?.Type == OperationType.Assign || result.Right.Token.Operation?.Type == OperationType.Assign)
-					InfoProvider.AddError($"Assignment operator can be only as a root node", ExceptionType.BadExpression, position);
-            }
-
-            return result;
+            return type < DataTypes.Double;
         }
     }
 }

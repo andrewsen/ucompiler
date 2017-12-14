@@ -281,6 +281,16 @@ namespace Translator
             return Representation;
         }
     }
+
+    class TypedToken : Token
+    {
+        public IType BoundType;
+
+        public TypedToken(IType type)
+        {
+            BoundType = type;
+        }
+    }
 }
 /* 
  * // [0] - program stack
