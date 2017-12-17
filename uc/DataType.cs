@@ -12,6 +12,17 @@ namespace Translator
         }
     }
 
+    public class ImplicitType : IType
+    {
+        public DataTypes Type => throw new InternalException("Trying to get type of implicit");
+
+        public bool Equals(IType other)
+        {
+            return false;
+        }
+    }
+
+
     public class PlainType : IType
     {
         public DataTypes Type
@@ -150,12 +161,7 @@ namespace Translator
 
         public INamedDataElement FindDeclarationRecursively(Token token)
         {
-            return FindDeclaration(token) ?? Parent?.findDeclarationClosure(token);
-        }
-
-        public INamedDataElement findDeclarationClosure(Token token)
-        {
-            return FindDeclaration(token) ?? Parent?.findDeclarationClosure(token);
+            return FindDeclaration(token) ?? Parent?.FindDeclarationRecursively(token);
         }
 
         public INamedDataElement ResolveMethod(Token token, List<IType> paramList)
@@ -165,7 +171,7 @@ namespace Translator
             if (suitted.Count > 1)
                 InfoProvider.AddError("Can't resolve method. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
             else if (suitted.Count == 0)
-                InfoProvider.AddError("Can't resolve method. Method not found", ExceptionType.MethodNotFound, token.Position);
+                InfoProvider.AddFatal("Can't resolve method. Method not found", ExceptionType.MethodNotFound, token.Position);
 
             return suitted.First();
         }
@@ -174,9 +180,9 @@ namespace Translator
         {
             var suitted = SymbolTable.Methods.Where(c => c.Name == Name && c.Type == null && c.ParametersFitsArgs(paramList)).ToList();
             if (suitted.Count > 1)
-                InfoProvider.AddError("Can't resolve method. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
+                InfoProvider.AddError("Can't resolve constructor. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
             else if (suitted.Count == 0)
-                InfoProvider.AddError("Can't resolve method. Method not found", ExceptionType.MethodNotFound, token.Position);
+                InfoProvider.AddFatal("Can't resolve constructor. Constructor not found", ExceptionType.MethodNotFound, token.Position);
 
             return suitted.First();
         }

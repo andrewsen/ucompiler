@@ -173,5 +173,10 @@ namespace Translator
         {
             return Parameters.Find(p => p.Name == token);
         }
+
+        public bool HasParameter(Token variable)
+        {
+            return Parameters.Exists(p => p.Name == variable);
+        }
     }
 }

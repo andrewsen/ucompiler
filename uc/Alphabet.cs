@@ -35,8 +35,8 @@ namespace Translator
 		public const string PAR_C = ")";
 		public const string BLOCK_O = "{";
 		public const string BLOCK_C = "}";
-		public const string STAT_SEP = ";";
-		public const string SEP = ",";
+		public const string SEMICOLON = ";";
+		public const string COMMA = ",";
 		public const string INDEXER_O = "[";
 		public const string INDEXER_C = "]";
 		public const string MEMBER = ".";

@@ -10,11 +10,23 @@ namespace Translator
 {
     public class Compiler
     {
-        CompilerConfig compilerConfig;
-        AttributeList bindedAttributeList = new AttributeList();
-        DirectiveList directiveList = new DirectiveList();
-        MetadataList metadataList = new MetadataList();
-        ClassList classList = new ClassList();
+        private CompilerConfig compilerConfig;
+        private AttributeList bindedAttributeList = new AttributeList();
+        private DirectiveList directiveList = new DirectiveList();
+        private MetadataList metadataList = new MetadataList();
+        private ClassList classList = new ClassList();
+
+        private List<Token> defaultSyncList = new List<Token>
+        {
+            new Token { Representation = SEMICOLON, Type = TokenType.Semicolon },
+            new Token { Representation = BLOCK_C, Type = TokenType.Delimiter },
+        };
+
+        private List<string> keywords = new List<string>
+        {
+            VAR, IF, ELSE, FOR, WHILE, FOREACH, DO, BREAK, CONTINUE, RETURN, SWITCH, CASE,
+            DEFATULT, IMPORT, CLASS, STATIC, NATIVE, CONST, PUBLIC, PRIVATE, PROTECTED, NEW, IS, AS
+        };
 
         public Compiler(CompilerConfig config)
         {
@@ -216,7 +228,7 @@ namespace Translator
             clazz.AttributeList = bindedAttributeList;
             bindedAttributeList.Clear();
 
-            gStream.CheckNext(BLOCK_O, ExceptionType.Brace);
+            gStream.CheckNext(BLOCK_O, TokenType.Delimiter, ExceptionType.Brace);
 
             while (!gStream.Eof)
             {
@@ -277,14 +289,14 @@ namespace Translator
         private Field parseField(CommonClassEntry entry, TokenStream gStream)
         {
             Field field = new Field();
-            if (gStream.Is(STAT_SEP) && entry.Modifiers.HasFlag(ClassEntryModifiers.Const))
+            if (gStream.Is(SEMICOLON) && entry.Modifiers.HasFlag(ClassEntryModifiers.Const))
                 InfoProvider.AddError("Const field must be initialized immediately", ExceptionType.UninitedConstant, gStream.SourcePosition);
             field.FromClassEntry(entry);
             if (gStream.Is(ASSIGN))
             {
                 gStream.Next();
                 field.InitialExpressionPosition = gStream.TokenPosition;
-                gStream.SkipTo(STAT_SEP, false);
+                gStream.SkipTo(SEMICOLON, false);
             }
             return field;
         }
@@ -302,7 +314,7 @@ namespace Translator
                 getter.FromClassEntry(entry);
                 getter.BodyStream = gStream.Fork();
 
-                gStream.SkipTo(STAT_SEP, false);
+                gStream.SkipTo(SEMICOLON, false);
 
                 property.Getter = getter;
             }
@@ -343,7 +355,7 @@ namespace Translator
             else
             {
                 gStream.PushBack();
-                gStream.SkipTo(STAT_SEP, true);
+                gStream.SkipTo(SEMICOLON, true);
             }
 
             return function;
@@ -392,14 +404,15 @@ namespace Translator
 
                 var param = new Parameter();
 
-                param.Type = gStream.CurrentType(false);
+                param.Type = gStream.CurrentType();
+                param.DeclarationPosition = gStream.SourcePosition;
                 param.Name = gStream.GetIdentifierNext();
 
                 plist.Add(param);
 
                 if (gStream.IsNext(PAR_C))
                     break;
-                else if (gStream.Is(SEP))
+                else if (gStream.Is(COMMA))
                     gStream.Next();
                 else
                     InfoProvider.AddError("`,` or `)` expected in parameter declaration", ExceptionType.IllegalToken, gStream.SourcePosition);
@@ -416,7 +429,7 @@ namespace Translator
             entry.Scope = readScope(gStream);
             entry.DeclarationPosition = gStream.SourcePosition;
             entry.Modifiers = readModifiers(gStream);
-            entry.Type = gStream.CurrentType(true);
+            entry.Type = gStream.CurrentType(TypeReaderConf.IncludeVoid);
             if(gStream.Next().Type == TokenType.Identifier)
                 entry.Name = gStream.Current;
             else if(gStream.Is(PAR_O, TokenType.Delimiter))
@@ -504,29 +517,49 @@ namespace Translator
             {
                 var entryToken = lStream.Next();
 
-                if (!(entryToken.IsIdentifier() || entryToken.IsOp() || (entryToken.IsOneOf(TokenType.Delimiter, BLOCK_C))))
+                if (!(entryToken.IsIdentifier() || entryToken.IsSemicolon() || entryToken.IsOp() || (entryToken.IsOneOf(TokenType.Delimiter, BLOCK_C))))
                     InfoProvider.AddError("Identifier, control keyword, type or block expected", ExceptionType.IllegalToken, lStream.SourcePosition);
 
                 switch (entryToken.Representation)
                 {
                     case IF:
+                        evalIf(block, lStream);
                         break;
                     case FOR:
+                        evalFor(block, lStream);
                         break;
                     case WHILE:
+                        evalWhile(block, lStream);
                         break;
                     case DO:
+                        evalDoWhile(block, lStream);
                         break;
                     case SWITCH:
+                        throw new InternalException("Unimplemented yet");
                         break;
                     case FOREACH:
+                        throw new InternalException("Unimplemented yet");
                         break;
                     case RETURN:
+                        // TODO: Andrew Senko: Add control flow control (lol)
+                        evalReturn(block, lStream);
+                        break;
+                    case BLOCK_O:
+                        evalBlock(parent, lStream);
                         break;
                     case BLOCK_C:
                         return block;
+                    case ELSE:
+                        InfoProvider.AddError("Unbound `else` statement", ExceptionType.UnboundElse, lStream.SourcePosition);
+                        break;
+                    case CASE:
+                        InfoProvider.AddError("Unbound `case` statement", ExceptionType.UnboundCase, lStream.SourcePosition);
+                        break;
+                    case DEFATULT:
+                        InfoProvider.AddError("Unbound `default` statement", ExceptionType.UnboundDefault, lStream.SourcePosition);
+                        break;
                     default:
-                        evalStatement(parent, lStream);
+                        evalStatement(block, lStream);
                         break;
                 }
             }
@@ -534,40 +567,236 @@ namespace Translator
             return block;
         }
 
+        private IExpression evalBlockOrStatement(CodeBlock parent, TokenStream lStream)
+        {
+            if (lStream.Is(BLOCK_O, TokenType.Delimiter))
+                return evalBlock(parent, lStream);
+            return evalExpression(parent, lStream);
+        }
+
+        private void evalIf(CodeBlock parent, TokenStream lStream)
+        {
+            If ifStatement = new If(parent);
+            ifStatement.MasterIf = evalConditionalPart(parent, lStream);
+            evalIfTail(ifStatement, parent, lStream);
+            parent.Expressions.Add(ifStatement);
+        }
+
+        private ConditionalPart evalConditionalPart(CodeBlock parent, TokenStream lStream)
+        {
+            ConditionalPart ifPart = new ConditionalPart();
+            var position = lStream.SourcePosition;
+
+            // Now token stream points on next token `if` (should be `(` token)
+            if(!lStream.IsNext(PAR_O, TokenType.Delimiter))
+            {
+                InfoProvider.AddError("`(` expected after `if` keyword as a beginning of condition statement", ExceptionType.MissingParenthesis, lStream.SourcePosition);
+                lStream.PushBack(); // Doing rollback because that symbol might be a start of expression
+            }
+
+            // Pointing to start of the condition expression
+            lStream.Next();
+            var condition = evalExpression(parent, lStream, ParsingPolicy.Both);
+            if(condition.ExpressionRoot.Type.Type != DataTypes.Bool)
+                InfoProvider.AddError("Condition in `if` clause should have boolean type, but it does not", ExceptionType.IllegalType, position);
+
+            ifPart.Condition = condition;
+            if(lStream.IsNext(BLOCK_O, TokenType.Delimiter))
+            {
+                // Block'ed if
+                // if(...) { ... }
+                ifPart.Body = evalBlock(parent, lStream);
+            }
+            else
+            {
+                // Statement'ed if
+                // if(...) ...;
+                ifPart.Body = evalExpression(parent, lStream);
+            }
+            return ifPart;
+        }
+
+        private void evalIfTail(If ifStatement, CodeBlock parent, TokenStream lStream)
+        {
+            while(lStream.IsNext(ELSE, TokenType.Identifier))
+            {
+                if (lStream.IsNext(IF, TokenType.Identifier))
+                {
+                    ifStatement.ElseIfList.Add(evalConditionalPart(parent, lStream));
+                }
+                else
+                {
+                    ifStatement.ElsePart = evalBlockOrStatement(parent, lStream);
+
+                    // Stopping
+                    return;
+                }
+            }
+            lStream.PushBack();
+        }
+
+        private void evalFor(CodeBlock parent, TokenStream lStream)
+        {
+            For forStatement = new For(parent);
+            var position = lStream.SourcePosition;
+
+            // Now token stream points on next token `if` (should be `(` token)
+            if (!lStream.IsNext(PAR_O, TokenType.Delimiter))
+            {
+                InfoProvider.AddError("`(` expected after `for` keyword as a beginning of init statement", ExceptionType.MissingParenthesis, lStream.SourcePosition);
+                lStream.PushBack(); // Doing rollback because that symbol might be a start of expression
+            }
+
+            evalStatement(forStatement.Scope, lStream.Pass());
+            var condition = evalExpression(forStatement.Scope, lStream.Pass());
+
+            if (condition.ExpressionRoot.Type.Type != DataTypes.Bool)
+                InfoProvider.AddError("Condition in `for` clause should have boolean type, but it does not", ExceptionType.IllegalType, position);
+
+            forStatement.Condition = condition;
+            forStatement.Iteration = evalExpression(forStatement.Scope, lStream.Pass(), ParsingPolicy.Both);
+
+            forStatement.Body = evalBlockOrStatement(parent, lStream.Pass());
+
+            if (lStream.IsNext(ELSE, TokenType.Identifier))
+                forStatement.ElsePart = evalBlockOrStatement(parent, lStream);
+        }
+
+        private void evalWhile(CodeBlock parent, TokenStream lStream)
+        {
+            While whileStatement = new While(parent);
+            var position = lStream.SourcePosition;
+
+            // Now token stream points on next token `if` (should be `(` token)
+            if (!lStream.IsNext(PAR_O, TokenType.Delimiter))
+            {
+                InfoProvider.AddError("`(` expected after `while` keyword as a beginning of condition statement", ExceptionType.MissingParenthesis, lStream.SourcePosition);
+                lStream.PushBack(); // Doing rollback because that symbol might be a start of expression
+            }
+
+            // Pointing to start of the condition expression
+            var condition = evalExpression(parent, lStream.Pass(), ParsingPolicy.Both);
+
+            if (condition.ExpressionRoot.Type.Type != DataTypes.Bool)
+                InfoProvider.AddError("Condition in `while` clause should have boolean type, but it does not", ExceptionType.IllegalType, position);
+
+            whileStatement.Condition = condition;
+
+            whileStatement.Body = evalBlockOrStatement(parent, lStream.Pass());
+
+            if (lStream.IsNext(ELSE, TokenType.Identifier))
+                whileStatement.ElsePart = evalBlockOrStatement(parent, lStream.Pass());
+        }
+
+        private void evalDoWhile(CodeBlock parent, TokenStream lStream)
+        {
+            DoWhile whileStatement = new DoWhile(parent);
+            var position = lStream.SourcePosition;
+
+            lStream.CheckNext(BLOCK_O, TokenType.Delimiter, ExceptionType.Brace);
+
+            whileStatement.Body = evalBlock(parent, lStream);
+                
+            lStream.CheckNext(WHILE, TokenType.Identifier, ExceptionType.KeywordExpected);
+
+            // Now token stream points on next token `if` (should be `(` token)
+            if (!lStream.IsNext(PAR_O, TokenType.Delimiter))
+            {
+                InfoProvider.AddError("`(` expected after `while` keyword as a beginning of condition statement", ExceptionType.MissingParenthesis, lStream.SourcePosition);
+                lStream.PushBack(); // Doing rollback because that symbol might be a start of expression
+            }
+
+            // Pointing to start of the condition expression
+            var condition = evalExpression(parent, lStream.Pass(), ParsingPolicy.Both);
+
+            if (condition.ExpressionRoot.Type.Type != DataTypes.Bool)
+                InfoProvider.AddError("Condition in `while` clause should have boolean type, but it does not", ExceptionType.IllegalType, position);
+
+            whileStatement.Condition = condition;
+            lStream.CheckNext(SEMICOLON, TokenType.Semicolon, ExceptionType.Brace);
+
+            // No `else` case for now. Sorry :(
+            //lStream.Next();
+            //if (lStream.IsNext(ELSE, TokenType.Identifier))
+            //    whileStatement.ElsePart = evalBlockOrStatement(parent, lStream);
+        }
+
+        private void evalReturn(CodeBlock parent, TokenStream lStream)
+        {
+            Return retStatement = new Return(parent);
+            var position = lStream.SourcePosition;
+
+            lStream.Next();
+            var expr = evalExpression(parent, lStream);
+
+            var retType = parent.MethodContext.Type;
+            if (!retType.Equals(expr.ExpressionRoot.Type))
+            {
+                var result = tryCreateImplicitCast(expr.ExpressionRoot, retType);
+                if (result == null)
+                    InfoProvider.AddFatal($"Can't cast return type {expr.ExpressionRoot.Type.ToString()} to method's type {retType.ToString()}",
+                                          ExceptionType.IllegalType, position);
+                expr.ExpressionRoot = result;
+            }
+
+            retStatement.Expression = expr;
+            parent.Expressions.Add(retStatement);
+        }
+
         public void evalStatement(CodeBlock parent, TokenStream lStream)
         {
+            Variable localVar = null;
             if (isRegisteredType(lStream.Current))
             {
-                evalLocalVarDeclaration(parent, lStream);
+                localVar = evalLocalVarDeclaration(parent, lStream);
+                parent.Locals.Add(localVar);
 
-                if (lStream.IsNext(SEP, TokenType.Semicolon))
+                if (lStream.IsNext(SEMICOLON, TokenType.Semicolon))
                     return;
                 if (!lStream.Is(ASSIGN, TokenType.Operator))
                     InfoProvider.AddError("Assignment operator expected after variable declaration", ExceptionType.AssignmentExpected, lStream.SourcePosition);
                 lStream.PushBack();
             }
 
-            var pos = lStream.SourcePosition;
-            var expr = evalExpression(lStream);
-            var rootNode = expressionToAST(expr);
-            assignTypes(rootNode, parent);
-            parent.Expressions.Add(new Expression(rootNode, pos));
+            var expr = evalExpression(parent, lStream);
+            parent.Expressions.Add(expr);
         }
 
-        private void evalLocalVarDeclaration(CodeBlock parent, TokenStream lStream)
+        private Expression evalExpression(CodeBlock parent, TokenStream lStream, ParsingPolicy parsingPolicy = ParsingPolicy.SyncTokens)
+        {
+            var pos = lStream.SourcePosition;
+            var expr = buildPostfixForm(lStream, parsingPolicy);
+
+            if(expr.Count == 0)
+                return new Expression(new Node(null) { Type = new PlainType(DataTypes.Void) }, pos);
+            
+            var rootNode = expressionToAST(expr);
+
+            // If errors were detected during syntax alanysis - handle it and stop compilation
+            if (InfoProvider.HasErrors)
+                InfoProvider.InvokeErrorHandler();
+            assignTypes(rootNode, parent);
+
+            var result = new Expression(rootNode, pos);
+            return result;
+        }
+
+        private Variable evalLocalVarDeclaration(CodeBlock parent, TokenStream lStream)
         {
             var declPosition = lStream.SourcePosition;
-            var type = lStream.CurrentType(false);
-            if(type is ClassType clazz)
+            var type = lStream.CurrentType(TypeReaderConf.IncludeVar);
+            var name = lStream.GetIdentifierNext();
+
+            checkNamingUsage(lStream.Current, parent);
+
+            if (type is ClassType clazz)
             {
                 type = classList.Find(clazz.Name, lStream.SourcePosition);
             }
-            else if(type is ArrayType array && array.Inner is ClassType innerClazz)
+            else if (type is ArrayType array && array.Inner is ClassType innerClazz)
             {
-                type = classList.Find(innerClazz.Name, lStream.SourcePosition);
+                array.Inner = classList.Find(innerClazz.Name, lStream.SourcePosition);
             }
-
-            var name = lStream.GetIdentifierNext();
 
             Variable local = new Variable()
             {
@@ -576,12 +805,25 @@ namespace Translator
                 DeclarationPosition = declPosition,
             };
 
-            parent.Locals.Add(local);
+            return local;
         }
 
-        public List<Token> evalExpression(TokenStream stream, ParsingPolicy parsingPolicy = ParsingPolicy.Semicolon)
+        private void checkNamingUsage(Token nameToken, CodeBlock parent)
         {
-            // TODO: Andrew Senko: No type control. No variable declaration control. Implement all of this
+            if(!nameToken.IsIdentifier())
+                InfoProvider.AddFatal($"Identifier expected as variable name", ExceptionType.NamingViolation, nameToken.Position);
+            else if(keywords.Contains(nameToken.Representation))
+                InfoProvider.AddFatal($"Forbidden to use reserved words as identifiers", ExceptionType.NamingViolation, nameToken.Position);
+            else if(parent.HasDeclaration(nameToken))
+            {
+                var previousDecl = parent.FindDeclaration(nameToken);
+                InfoProvider.AddError($"Identifier is already in use. Redefinition of {previousDecl.DeclarationPosition}", ExceptionType.VariableRedefinition, nameToken.Position);
+            }
+        }
+
+        public List<Token> buildPostfixForm(TokenStream stream, ParsingPolicy parsingPolicy = ParsingPolicy.SyncTokens, List<Token> syncTokens = null)
+        {
+            // TODO: Andrew Senko: Add unary +/- support
 
             List<Token> resultingExpression = new List<Token>();
             Stack<int> functionArgCounter = new Stack<int>();
@@ -589,6 +831,9 @@ namespace Translator
             Token lastToken = Token.EOF;
 
             int bracketsCount = 0;
+
+            // Lol below
+            syncTokens = syncTokens ?? defaultSyncList;
 
             /// <summary>
             /// Satisfieses the policy.
@@ -603,10 +848,10 @@ namespace Translator
                 {
                     case ParsingPolicy.Brackets:
                         return bracketsCount >= 0;
-                    case ParsingPolicy.Semicolon:
-                        return !token.IsSemicolon();
+                    case ParsingPolicy.SyncTokens:
+                        return !syncTokens.Any(t => t.Representation == token.Representation && t.Type == token.Type);
                     case ParsingPolicy.Both:
-                        return bracketsCount >= 0 && !token.IsSemicolon();
+                        return bracketsCount >= 0 && !syncTokens.Any(t => t.Representation == token.Representation && t.Type == token.Type);
                 }
                 throw new ArgumentOutOfRangeException(nameof(parsingPolicy), "Invalid parsing policy");
             }
@@ -616,7 +861,7 @@ namespace Translator
                 var token = stream.Current;
                 if (token.IsConstant() || token.IsIdentifier())
                 {
-                    if (lastToken.IsOneOf(PAR_C, INDEXER_C))
+                    if (lastToken.IsOneOf(TokenType.Delimiter, PAR_C, INDEXER_C))
                         InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, stream.SourcePosition);
                     if (lastToken.IsIdentifier())
                         InfoProvider.AddError("Unexpected identifier", ExceptionType.BadExpression, stream.SourcePosition);
@@ -650,7 +895,7 @@ namespace Translator
                     {
                         var sourcePosition = stream.SourcePosition;
                         var tokenPosition = stream.TokenPosition;
-                        var type = stream.NextTypeSoft();
+                        var type = stream.NextType(TypeReaderConf.Soft);
 
                         if(stream.IsNext(PAR_O, TokenType.Delimiter))
                         {
@@ -683,7 +928,7 @@ namespace Translator
                 }
                 else if (token == INDEXER_O)
                 {
-                    if (lastToken.IsOp())
+                    if (lastToken.IsOp() && !lastToken.IsOp(OperationType.NewArr))
                         InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, stream.SourcePosition);
                     opStack.Push(token);
                     lastToken = token;
@@ -743,19 +988,22 @@ namespace Translator
                                     callBracketsCount--;
                                 else if (lookupStream.Is(PAR_O))
                                     callBracketsCount++;
-                                else if (callBracketsCount == 1 && lookupStream.Is(SEP, TokenType.Delimiter))
+                                else if (callBracketsCount == 1 && lookupStream.Is(COMMA, TokenType.Delimiter))
                                     callToken.Operation.ArgumentCount++;
                             }
                         }
-                        while (opStack.Count > 0 && opStack.Peek().IsOp())
+                        if (opStack.Count != 0 && !opStack.Peek().IsOp(OperationType.NewObj))
                         {
-                            if ((callToken.Operation.Association == Association.Left && callToken.Operation.Priority <= opStack.Peek().Operation.Priority)
-                                || (callToken.Operation.Association == Association.Right && callToken.Operation.Priority <= opStack.Peek().Operation.Priority))
+                            while (opStack.Count > 0 && opStack.Peek().IsOp())
                             {
-                                resultingExpression.Add(opStack.Pop());
+                                if ((callToken.Operation.Association == Association.Left && callToken.Operation.Priority <= opStack.Peek().Operation.Priority)
+                                    || (callToken.Operation.Association == Association.Right && callToken.Operation.Priority <= opStack.Peek().Operation.Priority))
+                                {
+                                    resultingExpression.Add(opStack.Pop());
+                                }
+                                else
+                                    break;
                             }
-                            else
-                                break;
                         }
 
                         opStack.Push(callToken);
@@ -770,6 +1018,9 @@ namespace Translator
                 {
                     bool isFuncCall = false;
                     bracketsCount--;
+                    if (bracketsCount < 0 && (parsingPolicy == ParsingPolicy.Both || parsingPolicy == ParsingPolicy.Brackets))
+                        break;
+
                     if (lastToken.IsOp() && lastToken.Operation.Type != OperationType.FunctionCall)
                         InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, stream.SourcePosition);
                     while (opStack.Count > 0 && opStack.Peek() != PAR_O)
@@ -790,7 +1041,7 @@ namespace Translator
                     //else if(!isFuncCall)
                     opStack.Pop();
                 }
-                else if (token == SEP)
+                else if (token == COMMA)
                 {
                     if (!(lastToken.IsConstant() || lastToken.IsIdentifier() || lastToken == PAR_C || lastToken == INDEXER_C))
                         InfoProvider.AddError("Unexpected comma", ExceptionType.UnexpectedComma, stream.SourcePosition);
@@ -800,7 +1051,12 @@ namespace Translator
                     lastToken = token;
                     //isUnary = true;
                 }
+
                 token = stream.Next();
+                if(token == BLOCK_C)
+                {
+                    InfoProvider.AddError("Semicolon expected", ExceptionType.SemicolonExpected, lastToken.TailPosition);
+                }
             }
             while (opStack.Count > 0)
             {
@@ -852,7 +1108,7 @@ namespace Translator
                         result.AddRight(makeASTNode(polish));
                     if (result.Left == null)
                         InfoProvider.AddError("No function name defined", ExceptionType.FunctionName, tok.Position);
-                    else if (!result.Left.Token.IsIdentifier())
+                    else if (!result.Left.Token.IsIdentifier() && !result.Left.Token.IsOp(OperationType.MemberAccess))
                         InfoProvider.AddError("Identifier expected as function name", ExceptionType.FunctionName, tok.Position);
                 }
             }
@@ -1004,13 +1260,19 @@ namespace Translator
                     node.Type = node.Left.Type;
                     assignOperationType(node, node.Left);
 
-                    if (node.Right.Token.Type == TokenType.Identifier && node.Right.RelatedNamedData is Variable rValueLocal)
-                        rValueLocal.IsUsed = true;
+                    if (node.Left.Token.Type == TokenType.Identifier && node.Left.RelatedNamedData is Variable lValueLocal)
+                        lValueLocal.IsUsed = true;
                 }
                 else if (node.Children.Count == 2)
                 {
                     assignTypes(node.Right, parent);
                     assignTypes(node.Left, parent);
+
+                    if(node.Token.IsOp(OperationType.Assign) && node.Left.Type is ImplicitType)
+                    {
+                        node.Left.Type = node.Left.RelatedNamedData.Type = node.Right.Type;
+                    }
+
                     assignOperationType(node, node.Left, node.Right);
 
                     if (node.Left.Token.Type == TokenType.Identifier && node.Token.IsOp(OperationType.Assign) && node.Left.RelatedNamedData is Variable lValueLocal)
@@ -1028,7 +1290,7 @@ namespace Translator
             }
             else if (node.Token.IsIdentifier())
             {
-                var local = parent.FindDeclarationRecursively(node.Token);
+                var local = parent.FindDeclaration(node.Token);
                 if (local != null)
                 {
                     node.RelatedNamedData = local;
@@ -1041,7 +1303,7 @@ namespace Translator
                     node.RelatedNamedData = method;
                 }
                 else
-                    InfoProvider.AddError("Can't resolve identifier", ExceptionType.UndeclaredIdentifier, node.Token.Position);
+                    InfoProvider.AddFatal($"Can't resolve identifier {node.Token}", ExceptionType.UndeclaredIdentifier, node.Token.Position);
             }
         }
 
@@ -1082,7 +1344,7 @@ namespace Translator
                 var typeMatrix = TypeMatrices.OperationMatrixLUT[operation.Type];
                 resultType = typeMatrix[leftTypeIndex, rightTypeIndex];
 
-                // TODO: Specify types directly
+                                                       // TODO: Specify types directly
                 if (resultType != DataTypes.Null && !operation.Is(OperationType.ArrayGet, OperationType.MemberAccess))
                 {
                     var hightestType = TypeMatrices.ImplicitCastMatrix[leftTypeIndex, rightTypeIndex];
@@ -1134,9 +1396,22 @@ namespace Translator
 
         private Node createCastingNode(Node from, Node to)
         {
+            return createCastingNode(from, to.Type);
+        }
+
+        private Node createCastingNode(Node from, IType to)
+        {
             var node = new Node(new Token { Type = TokenType.Operator, Operation = Operation.Cast, Position = from.Token.Position });
-            node.Type = to.Type;
+            node.Type = to;
             return node;
+        }
+
+        private Node tryCreateImplicitCast(Node node, IType toType)
+        {
+            var resultingType = TypeMatrices.ImplicitCastMatrix[(int)toType.Type, (int)node.Type.Type];
+            if (resultingType == DataTypes.Null)
+                return null;
+            return createCastingNode(node, toType);
         }
 
         private void compileFile(string src)
@@ -1167,6 +1442,8 @@ namespace Translator
         private bool isRegisteredType(string type)
         {
             if (IsPlainType(type, true))
+                return true;
+            if (type == VAR)
                 return true;
             return classList.Exists(c => c.Name == type);
         }

@@ -14,18 +14,49 @@ class Test
 
     public Test()
     {
-        
+        ;
+        var test = new Test[10];
+        //int[] arr = new int[10];
     }
 
     private double fun(int x)
     {
-        int val = x + 4;
-        double res = fun(val) + x;
+        var val = x + 4;
+        double res;
+        if(x > 0) {
+            res = fun(val) + x;
+        }
+        else if(x < 0)
+            res = 0;
+        else
+        {
+            res = 1;
+        }
     }
 
     private void testf()
     {
         double x = number + fun(4) * 4.3;
+    }
+}
+
+class Another
+{
+    public void print(string str)
+    {
+    }
+
+    public void Func()
+    {
+        var test = new Test();
+        test.fun(4);
+
+        //for(int i = 0; i < 10; ++i)
+
+        while(true)
+            print(""hello"");
+        else
+            print(""bye"");
     }
 }
 ";
@@ -36,6 +67,12 @@ class Test
             Compiler compiler = new Compiler(new CompilerConfig() {
                 Sources = new List<string> { testExpr }
             });
+
+            InfoProvider.ErrorLimitReached += () => {
+                InfoProvider.Print();
+                Environment.Exit(1);
+            };
+
             //var expr = compiler.parseExpression(new TokenStream(args[0], "<stdin>")) as Expression;
             ////var root = compiler.buildAST(expr);
             //foreach(var tok in expr.Tokens)

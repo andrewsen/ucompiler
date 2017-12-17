@@ -43,7 +43,7 @@ namespace uc
                 return new List<OperationType> 
                 { 
                     OperationType.Inc, OperationType.Dec, OperationType.PreInc, OperationType.PreDec, OperationType.PostInc, OperationType.PostDec, 
-                    OperationType.Not, OperationType.Inv, OperationType.UnaryPlus, OperationType.UnaryMinus
+                    OperationType.Not, OperationType.Inv, OperationType.UnaryPlus, OperationType.UnaryMinus, OperationType.NewArr, OperationType.NewObj
                 }.Contains(Type);
             }
         }

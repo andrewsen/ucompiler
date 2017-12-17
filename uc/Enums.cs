@@ -77,7 +77,7 @@ namespace Translator
         InvProperty,
         ConstModifier,
         DuplicateValue,
-        DoubledotExpected, //FIXME: LOOK UP FOR NORMAL ENGLISH TRANSLATION OF `:`
+        ColonExpected,
         MetaKeyExists,
         UnknownLocale,
         FunctionRedefinition,
@@ -116,7 +116,13 @@ namespace Translator
         ArraySpec,
         AmbigiousOverload,
         MethodNotFound,
-        ConstructorName
+        ConstructorName,
+        VariableRedefinition,
+        NamingViolation,
+        UnboundElse,
+        UnboundCase,
+        UnboundDefault,
+        KeywordExpected
     }
 
     public enum DeclarationForm
@@ -126,13 +132,19 @@ namespace Translator
 
     public enum ParsingPolicy
     {
-        Brackets, Semicolon, Both
+        Brackets, SyncTokens, Both
     }
 
     [Flags]
     public enum ClassEntryModifiers
     {
         None, Const, Static, Native
+    }
+
+    [Flags]
+    public enum TypeReaderConf
+    {
+        None, IncludeVoid, IncludeVar, Soft
     }
 
 }

@@ -62,6 +62,8 @@ namespace Translator
 
         public static Token EOF => eof;
 
+        public SourcePosition TailPosition => new SourcePosition(Position.Source, Position.Line, Position.LineNum, Position.TokenPos + Representation.Length, Position.File);
+
         public static implicit operator string(Token tok)
         {
             return tok.Representation;

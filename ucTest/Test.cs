@@ -69,25 +69,25 @@ class Test
         //[Test]
         public void TestExpression3()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr3, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.buildPostfixForm(new TokenStream(testExpr3, "<test>"), ParsingPolicy.SyncTokens));
         }
 
         //[Test]
         public void TestExpression4()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr4, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.buildPostfixForm(new TokenStream(testExpr4, "<test>"), ParsingPolicy.SyncTokens));
         }
 
         //[Test]
         public void TestExpression5()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr5, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.buildPostfixForm(new TokenStream(testExpr5, "<test>"), ParsingPolicy.SyncTokens));
         }
 
         //[Test]
         public void TestExpression6()
         {
-            PrintExpression(compiler.evalExpression(new TokenStream(testExpr6, "<test>"), ParsingPolicy.Semicolon));
+            PrintExpression(compiler.buildPostfixForm(new TokenStream(testExpr6, "<test>"), ParsingPolicy.SyncTokens));
         }
 
         private void PrintExpression(List<Token> expression)

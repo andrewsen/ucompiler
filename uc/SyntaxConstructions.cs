@@ -17,8 +17,6 @@ namespace Translator
         INamedDataElement FindDeclaration(Token token);
 
         INamedDataElement FindDeclarationRecursively(Token token);
-
-        INamedDataElement findDeclarationClosure(Token token);
     }
 
     public class Expression : IExpression
@@ -70,27 +68,32 @@ namespace Translator
         /// <param name="variable">Variable to be checked</param>
         public bool HasDeclaration(Token variable)
         {
-            return Locals.Exists(loc => loc.Name == variable.Representation);
+            return MethodContext.HasParameter(variable) || HasDeclarationRecursively(variable);
         }
 
         public bool HasDeclarationRecursively(Token variable)
         {
-            return HasDeclaration(variable) || (Parent != null && Parent.HasDeclarationRecursively(variable));
+            return HasDeclarationLocal(variable) || (Parent != null && Parent.HasDeclarationRecursively(variable));
+        }
+
+        public bool HasDeclarationLocal(Token token)
+        {
+            return Locals.Exists(loc => loc.Name == token.Representation);
         }
 
         public INamedDataElement FindDeclaration(Token token)
+        {
+            return FindDeclarationLocal(token) ?? Parent?.FindDeclarationRecursively(token) ?? MethodContext?.FindParameter(token);
+        }
+
+        public INamedDataElement FindDeclarationLocal(Token token)
         {
             return Locals.Find(loc => loc.Name == token.Representation);
         }
 
         public INamedDataElement FindDeclarationRecursively(Token token)
         {
-            return FindDeclaration(token) ?? Parent?.findDeclarationClosure(token) ?? MethodContext?.FindParameter(token);
-        }
-
-        public INamedDataElement findDeclarationClosure(Token token)
-        {
-            return FindDeclaration(token) ?? Parent?.findDeclarationClosure(token);
+            return FindDeclarationLocal(token) ?? Parent?.FindDeclarationRecursively(token);
         }
     }
 
@@ -148,6 +151,85 @@ namespace Translator
         public void AddRight(Node node)
         {
             Children.Add(node);
+        }
+    }
+
+    public class If : IExpression
+    {
+        public ConditionalPart MasterIf;
+        public List<ConditionalPart> ElseIfList;
+        public IExpression ElsePart;
+
+        public CodeBlock Parent;
+
+        public If(CodeBlock parent)
+        {
+            Parent = parent;
+            ElseIfList = new List<ConditionalPart>();
+        }
+    }
+
+    public class ConditionalPart
+    {
+        public Expression Condition;
+        public IExpression Body;
+    }
+
+    public class Return : IExpression
+    {
+        public CodeBlock Parent;
+        public Expression Expression;
+
+        public Return(CodeBlock parent)
+        {
+            Parent = parent;
+        }
+    }
+
+    public class For : IExpression
+    {
+        public CodeBlock Parent;
+        public CodeBlock Scope;
+
+        public Expression Condition;
+        public Expression Iteration;
+
+        public IExpression Body;
+        public IExpression ElsePart;
+
+        public For(CodeBlock parent)
+        {
+            Parent = parent;
+            Scope = new CodeBlock(parent);
+        }
+    }
+
+    public class While : IExpression
+    {
+        public CodeBlock Parent;
+
+        public Expression Condition;
+
+        public IExpression Body;
+        public IExpression ElsePart;
+
+        public While(CodeBlock parent)
+        {
+            Parent = parent;
+        }
+    }
+
+    public class DoWhile : IExpression
+    {
+        public CodeBlock Parent;
+
+        public Expression Condition;
+
+        public IExpression Body;
+
+        public DoWhile(CodeBlock parent)
+        {
+            Parent = parent;
         }
     }
 }

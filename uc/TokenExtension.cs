@@ -50,15 +50,15 @@ namespace Translator
             return toks.Next() == str && toks.Current.ConstType == constType;
         }
 
-        public static void CheckNext(this TokenStream toks, string str, ExceptionType extype)
+        public static void CheckNext(this TokenStream toks, string str, TokenType type, ExceptionType extype)
         {
-            if(!toks.IsNext(str))
+            if(!toks.IsNext(str, type))
                 InfoProvider.AddError("`"+str+"` expected", extype, toks.SourcePosition);
         }
 
-        public static void Check(this TokenStream toks, string str, ExceptionType extype)
+        public static void Check(this TokenStream toks, string str, TokenType type, ExceptionType extype)
         {
-            if(!toks.Is(str))
+            if(!toks.Is(str, type))
                 InfoProvider.AddError("`"+str+"` expected", extype, toks.SourcePosition);
         }
 
@@ -97,33 +97,31 @@ namespace Translator
             return result + toks.Current.Representation;
         }
 
-        public static IType CurrentType(this TokenStream toks, bool includeVoid) 
+        public static IType CurrentType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None) 
         {
             string identifier = toks.GetIdentifier();
-            return readType(toks, identifier, includeVoid);
+            return readType(toks, identifier, conf);
         }
 
-        public static IType NextType(this TokenStream toks, bool includeVoid)
+        public static IType NextType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None)
         {
             string identifier = toks.GetIdentifierNext();
-            return readType(toks, identifier, includeVoid);
+            return readType(toks, identifier, conf);
         }
 
-        public static IType NextTypeSoft(this TokenStream toks)
+        private static IType readType(TokenStream toks, string identifier, TypeReaderConf conf)
         {
-            string identifier = toks.GetIdentifierNext();
-            return readType(toks, identifier, false, true);
-        }
-
-        private static IType readType(TokenStream toks, string identifier, bool includeVoid, bool soft = false)
-        {
-            if(identifier == "void" && !includeVoid)
+            if (identifier == "void" && !conf.HasFlag(TypeReaderConf.IncludeVoid))
                 InfoProvider.AddError("Unexpected `void` type", ExceptionType.IllegalType, toks.SourcePosition);
+            else if (identifier == "var" && !conf.HasFlag(TypeReaderConf.IncludeVar))
+                InfoProvider.AddError("Unexpected implicit type", ExceptionType.IllegalType, toks.SourcePosition);
 
             int dimens = 0;
+            int tempPos;
 
             while (!toks.Eof)
             {
+                tempPos = toks.TokenPosition;
                 if (toks.IsNext("["))
                 {
                     dimens++;
@@ -133,22 +131,26 @@ namespace Translator
                     toks.PushBack();
                     break;
                 }
-                if (!soft)
-                    toks.CheckNext("]", ExceptionType.Brace);
+                if (!conf.HasFlag(TypeReaderConf.Soft))
+                    toks.CheckNext("]", TokenType.Delimiter, ExceptionType.Brace);
                 else if(!toks.IsNext("]"))
                 {
                     --dimens;
-                    toks.PushBack();
+                    toks.TokenPosition = tempPos;
                     break;
                 }
             }
 
-            if(identifier == "void" && dimens > 0)
+            if (identifier == "void" && dimens > 0)
                 InfoProvider.AddError("Unexpected `void` typed array", ExceptionType.IllegalType, toks.SourcePosition);
+            else if (identifier == "var" && dimens > 0)
+                InfoProvider.AddError("Array should have explicit type", ExceptionType.IllegalType, toks.SourcePosition);
 
             IType result;
-            if(Compiler.IsPlainType(identifier))
+            if (Compiler.IsPlainType(identifier))
                 result = new PlainType(identifier);
+            else if (identifier == "var")
+                result = new ImplicitType();
             else
                 result = new ClassType(identifier);
 

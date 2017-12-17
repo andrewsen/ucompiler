@@ -305,7 +305,7 @@ namespace Translator
                 cur.Representation = "#";
                 ++pos;
             }
-            if (source[pos] == '"')
+            else if (source[pos] == '"')
             {
                 temp = "\"";
                 while (source[++pos] != '"')
@@ -315,7 +315,7 @@ namespace Translator
                 cur.Type = TokenType.Constant;
                 cur.ConstType = ConstantType.String;
             }
-            if (source[pos] == '\'')
+            else if (source[pos] == '\'')
             {
                 temp = "'";
                 while (source[++pos] != '\'')
@@ -325,6 +325,7 @@ namespace Translator
                 cur.Type = TokenType.Constant;
                 cur.ConstType = ConstantType.Char;
             }
+
             if(cur.Type == TokenType.Unknown)
             {
                 InfoProvider.AddError($"Unknown symbol `{source[pos]}`", ExceptionType.IllegalToken, SourcePosition);

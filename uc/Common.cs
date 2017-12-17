@@ -32,6 +32,12 @@ namespace Translator
 
     public delegate void ErrorLimitReachedDelegate();
 
+    public class InternalException : Exception
+    {
+        public InternalException(string message)
+            : base(message)
+        {}
+    }
 
     interface IDirective
     {
@@ -99,6 +105,13 @@ namespace Translator
         public static int ErrorLimit = 10;
 
         private static int errorCount = 0;
+
+        public static bool HasErrors => errorCount != 0;
+
+        public static void InvokeErrorHandler()
+        {
+            ErrorLimitReached?.Invoke();
+        }
 
         public static void AddFatal(string what, ExceptionType ex, SourcePosition where)
         {
