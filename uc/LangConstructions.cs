@@ -84,19 +84,18 @@ namespace Translator
 
     public class Parameter : Variable
     {
-        
+        public override string ToString()
+        {
+            return $"{Type.ToString()} {Name}";
+        }
     }
 
     public class ParameterList : List<Parameter>
     {
         public override string ToString()
         {
-            var result = "";
-            foreach (var variable in this)
-            {
-                result += variable.Type + " " + variable.Name + ", ";
-            }
-            return result.TrimEnd(',', ' ');
+            var result = string.Join(", ", this);
+            return result;
         }
     }
 
@@ -146,14 +145,31 @@ namespace Translator
 
     public class Method : Field
     {
+        private int localCount;
+
 		public DeclarationForm DeclarationForm;
         public ParameterList Parameters;
+
         public CodeBlock Body;
+        public Dictionary<Variable, int> DeclaredLocals;
 
         /// <summary>
         /// Points on position before `{` in full form or after `->` in short one
         /// </summary>
         public TokenStream BodyStream;
+
+        public string Signature => $"{Type.ToString()} {Class.Name}::{Name} ({Parameters.ToString()})";
+
+        public Method()
+        {
+            localCount = 0;
+            DeclaredLocals = new Dictionary<Variable, int>();
+        }
+		
+		public void AddLocal(Variable localVar)
+		{
+            DeclaredLocals.Add(localVar, localCount++);
+		}
 
         public bool ParametersFitsArgs(List<IType> argList)
         {

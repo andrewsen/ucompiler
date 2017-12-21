@@ -95,6 +95,12 @@ namespace Translator
         {
             return FindDeclarationLocal(token) ?? Parent?.FindDeclarationRecursively(token);
         }
+
+        public void AddLocal(Variable localVar)
+        {
+            MethodContext.AddLocal(localVar);
+            Locals.Add(localVar);
+        }
     }
 
     public class Node
@@ -161,6 +167,8 @@ namespace Translator
         public IExpression ElsePart;
 
         public CodeBlock Parent;
+
+        public List<ConditionalPart> Conditions => new List<ConditionalPart> { MasterIf }.Concat(ElseIfList).ToList();
 
         public If(CodeBlock parent)
         {
@@ -231,5 +239,15 @@ namespace Translator
         {
             Parent = parent;
         }
+    }
+
+    public class Break : IExpression
+    {
+
+    }
+
+    public class Continue : IExpression
+    {
+
     }
 }

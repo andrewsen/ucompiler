@@ -135,12 +135,12 @@ namespace Translator
 
         public bool IsOp()
         {
-            return Type == TokenType.Operator;
+            return Type == TokenType.Operator || Type == TokenType.OperatorAssign;
         }
 
         public bool IsOp(OperationType type)
         {
-            return Type == TokenType.Operator && Operation.Type == type;
+            return (Type == TokenType.Operator || Type == TokenType.OperatorAssign) && Operation.Type == type;
         }
 
         public bool IsDelim()

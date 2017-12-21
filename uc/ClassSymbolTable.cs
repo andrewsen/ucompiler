@@ -71,6 +71,11 @@ namespace Translator
 			InfoProvider.AddError("Identifier is already in use", ExceptionType.IdentifierInUse, element.DeclarationPosition);
 			InfoProvider.AddError("previously declared here", ExceptionType.AdditionalInfo, element.DeclarationPosition);
 		}
-	}
+
+        public object FieldIndex(Field field)
+        {
+            return fields.IndexOf(field);
+        }
+    }
 }
 

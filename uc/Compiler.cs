@@ -10,7 +10,7 @@ namespace Translator
 {
     public class Compiler
     {
-        private CompilerConfig compilerConfig;
+        public CompilerConfig Config;
         private AttributeList bindedAttributeList = new AttributeList();
         private DirectiveList directiveList = new DirectiveList();
         private MetadataList metadataList = new MetadataList();
@@ -30,12 +30,12 @@ namespace Translator
 
         public Compiler(CompilerConfig config)
         {
-            compilerConfig = config;
+            Config = config;
         }
 
         public void Compile()
         {
-            foreach (var src in compilerConfig.Sources)
+            foreach (var src in Config.Sources)
             {
                 // Parsing classes and their content (fields, props, methods)
                 parseGlobalScope(src);
@@ -46,7 +46,7 @@ namespace Translator
                 compileClass(clazz);
             }
 
-            foreach (var src in compilerConfig.Sources)
+            foreach (var src in Config.Sources)
             {
                 // Compiling 
                 // TODO: Rework it
@@ -100,7 +100,7 @@ namespace Translator
             switch (attr.Name)
             {
                 case "AllowBuiltins":
-                    compilerConfig.AllowBuiltins = true;
+                    Config.AllowBuiltins = true;
                     break;
                 case "AddMeta":
                 case "Info":
@@ -144,8 +144,8 @@ namespace Translator
                     if (attr.Data.Count != 1 && !(attr.Data[0].Value is string))
                         InfoProvider.AddError("@Module: Incorrect name", ExceptionType.AttributeException, gStream.SourcePosition);
                     //throw new AttributeException("Module", "Incorrect module name");
-                    if (compilerConfig.OutBinaryFile == null)
-                        compilerConfig.OutBinaryFile = (attr.Data[0].Value as string) + ".vas"; // TODO: FIXME
+                    if (Config.OutBinaryFile == null)
+                        Config.OutBinaryFile = (attr.Data[0].Value as string) + ".vas"; // TODO: FIXME
                     break;
                 case "RuntimeInternal":
                     if (attr.Data.Count != 0)
@@ -168,7 +168,7 @@ namespace Translator
                 case "Debug:Set":
                     {
                         // Making fallthru if debug option is disabled
-                        if (!compilerConfig.DebugBuild)
+                        if (!Config.DebugBuild)
                             goto default; // YAAAY ;D
 
                         if ((attr.Data.Count > 2 || attr.Data.Count < 1 || !(attr.Data[0].Value is string)) && !attr.Data[0].IsOptional)
@@ -534,6 +534,12 @@ namespace Translator
                     case DO:
                         evalDoWhile(block, lStream);
                         break;
+                    case BREAK:
+                        evalBreak(block, lStream);
+                        break;
+                    case CONTINUE:
+                        evalContinue(block, lStream);
+                        break;
                     case SWITCH:
                         throw new InternalException("Unimplemented yet");
                         break;
@@ -721,6 +727,18 @@ namespace Translator
             //    whileStatement.ElsePart = evalBlockOrStatement(parent, lStream);
         }
 
+        private void evalBreak(CodeBlock parent, TokenStream lStream)
+        {
+            lStream.CheckNext(SEMICOLON, TokenType.Semicolon, ExceptionType.Brace);
+            parent.Expressions.Add(new Break());
+        }
+
+        private void evalContinue(CodeBlock parent, TokenStream lStream)
+        {
+            lStream.CheckNext(SEMICOLON, TokenType.Semicolon, ExceptionType.Brace);
+            parent.Expressions.Add(new Continue());
+        }
+
         private void evalReturn(CodeBlock parent, TokenStream lStream)
         {
             Return retStatement = new Return(parent);
@@ -749,7 +767,7 @@ namespace Translator
             if (isRegisteredType(lStream.Current))
             {
                 localVar = evalLocalVarDeclaration(parent, lStream);
-                parent.Locals.Add(localVar);
+                parent.AddLocal(localVar);
 
                 if (lStream.IsNext(SEMICOLON, TokenType.Semicolon))
                     return;
@@ -1072,7 +1090,30 @@ namespace Translator
 
         public Node expressionToAST(List<Token> expr)
         {
-            return makeASTNode(new Stack<Token>(expr));
+            var root = makeASTNode(new Stack<Token>(expr));
+
+            if(root.Token.Type == TokenType.OperatorAssign)
+            {
+                var newRoot = new Node(new Token 
+                { 
+                    Type = TokenType.Operator, 
+                    Representation = "=", 
+                    Operation = Operation.From("="), 
+                    Position = root.Token.Position 
+                });
+
+                newRoot.Left = root.Left;
+                newRoot.Right = root;
+                root.Token = new Token
+                {
+                    Type = TokenType.Operator,
+					Representation = root.Token.Representation.TrimEnd('='),
+                    Operation = Operation.From(root.Token.Representation.TrimEnd('=')),
+                };
+                root = newRoot;
+            }
+
+            return root;
         }
 
         private Node makeASTNode(Stack<Token> polish)

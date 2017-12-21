@@ -39,15 +39,15 @@ namespace Translator
         {}
     }
 
-    interface IDirective
+    public interface IDirective
     {
     }
 
-    class DirectiveList : List<IDirective>
+    public class DirectiveList : List<IDirective>
     {
     }
 
-    class ClassList : List<ClassType>
+    public class ClassList : List<ClassType>
     {
         public ClassType Find(Token token)
         {
@@ -63,7 +63,7 @@ namespace Translator
         }
     }
 
-    class Metadata : IDirective
+    public class Metadata : IDirective
     {
         public string Key;
         public DataTypes Type;
@@ -71,12 +71,12 @@ namespace Translator
         public bool Compilable = true;
     }
 
-    class MetadataList : List<Metadata>
+    public class MetadataList : List<Metadata>
     {
         
     }
 
-    class RuntimeMetadata : Metadata
+    public class RuntimeMetadata : Metadata
     {
         public string Prefix;
     }
