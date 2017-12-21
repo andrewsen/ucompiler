@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Translator;
 
 namespace uc
@@ -20,14 +21,19 @@ namespace uc
         private DirectiveList directiveList;
         private MetadataList metadataList;
         private ClassList classList;
-        private FileInfo output;
+        //private FileInfo output;
         private CompilerConfig config;
-        private StreamWriter outputWriter;
+        //private FileStream outputWriter;
 
         private ClassType currentClass;
         private Method currentMethod;
 
-        private List<CodeEntry> code;
+        private List<CodeEntry> code = new List<CodeEntry>();
+
+        private Stack<string> continues = new Stack<string>();
+        private Stack<string> breaks = new Stack<string>();
+
+        private StringBuilder result = new StringBuilder();
 
         public CodeGen(CompilerConfig conf, DirectiveList directives, MetadataList metadata, ClassList classes)
         {
@@ -39,15 +45,17 @@ namespace uc
 
         public void Generate()
         {
-            output = new FileInfo(config.OutInfoFile);
-            outputWriter = output.AppendText();
+            //output = new FileInfo(config.OutInfoFile);
+            //outputWriter = output.OpenWrite();
             foreach (var clazz in classList)
                 compileClass(clazz);
+
+            File.WriteAllText(config.OutInfoFile, result.ToString());
         }
 
         private void write(string line, int offset=0)
         {
-            outputWriter.Write(new string(' ', offset) + line);
+            result.Append(new string(' ', offset) + line);
         }
 
         private void compileClass(ClassType clazz)
@@ -93,11 +101,12 @@ namespace uc
                 var modifiers = method.Modifiers.ToString().ToLower();
 
                 string line = $".{scope} {modifiers} {method.Type} {method.Name} ({method.Parameters.ToString()})";
-                write($"{line}\n{{\n", 4);
+                write($"{line} {{\n", 4);
 
                 currentMethod = method;
-                code = new List<CodeEntry>();
+                code.Clear();
                 compileMethodBody(method);
+                code.ForEach(entry => write(entry.View + "\n", 8));
 
 				write("}\n\n", 4);
             }
@@ -137,6 +146,12 @@ namespace uc
             {
                 switch (iexpr)
                 {
+                    case Break b:
+                        compileBreak();
+                        break;
+                    case Continue c:
+                        compileContinue();
+                        break;
                     case If ifExpr:
                         compileIf(ifExpr);
                         break;
@@ -154,48 +169,105 @@ namespace uc
                         break;
                     case CodeBlock childBlock:
                         compileBlock(childBlock);
-                        break;
+                        break;                    
                 }
             }
+        }
+
+        private void compileBreak()
+        {
+            code.Add(new CodeEntry($"jmp {breaks.Peek()}:"));
+        }
+
+        private void compileContinue()
+        {
+            code.Add(new CodeEntry($"jmp {continues.Peek()}:"));
         }
 
         private void compileIf(If ifExpr)
         {
             var ifs = ifExpr.Conditions;
 
-            var outLabel = $"_if_out_{code.Count}:";
+            var outLabel = $"_if_out_{code.Count}";
             foreach (var cond in ifs)
             {
                 compileExpr(ifExpr.MasterIf.Condition);
 
-                var passLabel = $"_if_next_{code.Count}:";
+                var passLabel = $"_if_next_{code.Count}";
                 code.Add(new CodeEntry($"jfalse {passLabel}"));
 
-                compileIExpr(ifExpr.MasterIf.Body);
+                compileIExpr(cond.Body);
 
                 code.Add(new CodeEntry($"jmp {outLabel}"));
                 code.Add(new CodeEntry($"{passLabel}:"));
             }
+            compileIExpr(ifExpr.ElsePart);
             code.Add(new CodeEntry($"{outLabel}:"));
+        }
+
+        private void compileWhile(While whileExpr)
+        {
+            var inLabel = $"_while_in_{code.Count}";
+            var elseLabel = $"_while_else_{code.Count}";
+            var outLabel = $"_while_out_{code.Count}";
+
+            continues.Push(inLabel);
+            breaks.Push(elseLabel);
+
+            code.Add(new CodeEntry($"{inLabel}:"));
+            compileExpr(whileExpr.Condition);
+
+            code.Add(new CodeEntry($"jfalse {outLabel}"));
+            compileIExpr(whileExpr.Body);
+            code.Add(new CodeEntry($"jmp {inLabel}"));
+            code.Add(new CodeEntry($"{elseLabel}:"));
+            compileIExpr(whileExpr.ElsePart);
+            code.Add(new CodeEntry($"{outLabel}:"));
+            continues.Pop();
+            breaks.Pop();
+        }
+
+        private void compileDoWhile(DoWhile doWhileExpr)
+        {
+            var inLabel = $"_do_while_in_{code.Count}";
+            var outLabel = $"_do_while_out_{code.Count}";
+
+            continues.Push(inLabel);
+            breaks.Push(outLabel);
+
+            code.Add(new CodeEntry($"{inLabel}:"));
+			compileIExpr(doWhileExpr.Body);
+
+            compileExpr(doWhileExpr.Condition);
+            code.Add(new CodeEntry($"jtrue {inLabel}"));
+            code.Add(new CodeEntry($"jmp {inLabel}"));
+            code.Add(new CodeEntry($"{outLabel}:"));
+            continues.Pop();
+            breaks.Pop();
         }
 
         private void compileFor(For forExpr)
         {
-            if (forExpr.Body is CodeBlock blk)
-            {
-                compileBlock(blk);
-            }
-            else
-            {
-                compileExpr(forExpr.Body as Expression);
-            }
-            var iterLabel = new CodeEntry($"_iter_for_{code.Count}:");
-            code.Add(iterLabel);
-            var outLabel = new CodeEntry($"_out_for_{code.Count}:");
+            // Condition
+            compileIExpr(forExpr.Scope.Expressions[0]);
 
+            var inLabel = $"_for_in_{code.Count}";
+			var elseLabel = $"_for_else_{code.Count}";
+            var outLabel = $"_for_out_{code.Count}";
+
+            continues.Push(inLabel);
+            breaks.Push(elseLabel);
+
+            code.Add(new CodeEntry(inLabel));
+            compileExpr(forExpr.Condition);
             compileIExpr(forExpr.Body);
-            code.Add(outLabel);
-
+            compileExpr(forExpr.Iteration);
+            code.Add(new CodeEntry($"jmp {inLabel}"));
+            code.Add(new CodeEntry($"{elseLabel}:"));
+            compileIExpr(forExpr.ElsePart);
+            code.Add(new CodeEntry($"{outLabel}:"));
+            continues.Pop();
+            breaks.Pop();
         }
 
         private void compileExpr(Expression expr)
@@ -205,11 +277,15 @@ namespace uc
 
         private void compileNode(Node node)
         {
-            if (node.Token.IsOp())
+            if (node.Token == null)
+            {
+                code.Add(new CodeEntry("nop"));
+            }
+            else if (node.Token.IsOp())
             {
                 compileOp(node);
             }
-            else
+            else if(node.Left != null && !(node.Left.Token is TypedToken))
             {
                 if (node.RelatedNamedData != null)
                     loadVar(node);
@@ -325,10 +401,10 @@ namespace uc
                     code.Add(new CodeEntry("stelem"));
                     break;
                 case OperationType.NewObj:
-                    code.Add(new CodeEntry("newobj"));
+                    code.Add(new CodeEntry("newobj " + node.Type.ToString()));
                     break;
                 case OperationType.NewArr:
-                    code.Add(new CodeEntry("newarr"));
+                    code.Add(new CodeEntry("newarr " + (node.Left.Token as TypedToken).BoundType.ToString()));
                     break;
                 case OperationType.Assign:
                     storeVar(node.Left);

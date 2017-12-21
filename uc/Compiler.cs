@@ -52,6 +52,9 @@ namespace Translator
                 // TODO: Rework it
                 compileFile(src);
             }
+
+            CodeGen gen = new CodeGen(Config, directiveList, metadataList, classList);
+            gen.Generate();
         }
 
         private void compileClass(ClassType clazz)

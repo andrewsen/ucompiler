@@ -65,7 +65,9 @@ class Another
             // a = arr[4] + (c - d * 4);
             //TokenStream stream = new TokenStream(File.ReadAllText(args[0]), args[0]);
             Compiler compiler = new Compiler(new CompilerConfig() {
+                OutInfoFile = "test.mc2",
                 Sources = new List<string> { testExpr }
+                
             });
 
             InfoProvider.ErrorLimitReached += () => {
