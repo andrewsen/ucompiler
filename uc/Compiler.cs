@@ -573,7 +573,10 @@ namespace Translator
                 if(token.IsConstant() || token.IsIdentifier())
                 {
                     if (token.Representation.ToLower() == "end")
+                    {
+                        gStream.PushBack();
                         break;
+                    }
                     if (isLastBrace)
                         InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, gStream.SourcePosition);
                     if (isLastIdent)
