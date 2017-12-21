@@ -51,22 +51,22 @@ namespace Translator
                 switch(stmt)
                 {
 					case Statement s:
-						Console.WriteLine(new string(' ', level) + "Statement:");
+                        Console.WriteLine(new string(' ', level) + "statement:");
                         PrintNode(s.Root, level + 2);
                         break;
 					case CodeBlock blk:
-                        Console.WriteLine(new string(' ', level) + "Code block begin");
+                        Console.WriteLine(new string(' ', level) + "code begin");
                         PrintBlock(blk, level + 2);
-						Console.WriteLine(new string(' ', level) + "Code block end");
+						Console.WriteLine(new string(' ', level) + "code end");
                         break;
 					case If ifExpr:
-						Console.WriteLine(new string(' ', level) + "If:");
-						Console.WriteLine(new string(' ', level + 2) + "Condition:");
+						Console.WriteLine(new string(' ', level) + "condition:");
+						Console.WriteLine(new string(' ', level + 2) + "cond:");
 						PrintNode(ifExpr.Condition, level + 4);
-						Console.WriteLine(new string(' ', level + 2) + "Body:");
-						Console.WriteLine(new string(' ', level + 2) + "Code block begin");
+						Console.WriteLine(new string(' ', level + 2) + "inner:");
+						Console.WriteLine(new string(' ', level + 2) + "code begin");
 						PrintBlock(ifExpr.Block, level + 4);
-						Console.WriteLine(new string(' ', level + 2) + "Code block end");
+						Console.WriteLine(new string(' ', level + 2) + "code end");
                         break;
                 }
             }
