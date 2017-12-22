@@ -68,8 +68,8 @@ namespace Translator
         private void parseGlobalScope(string src)
         {
             // FIXME: Only for testing
-            //TokenStream gStream = new TokenStream(File.ReadAllText(src), src);
-            TokenStream gStream = new TokenStream(src, "<testing>");
+            TokenStream gStream = new TokenStream(File.ReadAllText(src), src);
+            //TokenStream gStream = new TokenStream(src, "<testing>");
 
             while (!gStream.NextEof())
             {
@@ -669,6 +669,7 @@ namespace Translator
 
             if (lStream.IsNext(ELSE, TokenType.Identifier))
                 forStatement.ElsePart = evalBlockOrStatement(parent, lStream);
+            parent.Expressions.Add(forStatement);
         }
 
         private void evalWhile(CodeBlock parent, TokenStream lStream)
@@ -695,6 +696,8 @@ namespace Translator
 
             if (lStream.IsNext(ELSE, TokenType.Identifier))
                 whileStatement.ElsePart = evalBlockOrStatement(parent, lStream.Pass());
+
+            parent.Expressions.Add(whileStatement);
         }
 
         private void evalDoWhile(CodeBlock parent, TokenStream lStream)
@@ -723,6 +726,7 @@ namespace Translator
 
             whileStatement.Condition = condition;
             lStream.CheckNext(SEMICOLON, TokenType.Semicolon, ExceptionType.Brace);
+            parent.Expressions.Add(whileStatement);
 
             // No `else` case for now. Sorry :(
             //lStream.Next();
@@ -1243,6 +1247,8 @@ namespace Translator
             {
                 if (node.Children.Count != 1 || !node.Left.Token.IsOp(OperationType.ArrayGet))
                     InfoProvider.AddFatal("Array size specification in `new` statement expected", ExceptionType.ArraySpec, node.Token.Position);
+
+                assignTypes(node.Left.Right, parent);
 
                 node.Children = node.Left.Children;
                 if (!(node.Left.Token is TypedToken))

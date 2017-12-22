@@ -6,67 +6,13 @@ namespace Translator
 {
     class MainClass
     {
-        private const string testExpr =
-@"
-class Test
-{
-    public int number;
-
-    public Test()
-    {
-        ;
-        var test = new Test[10];
-        //int[] arr = new int[10];
-    }
-
-    private double fun(int x)
-    {
-        var val = x + 4;
-        double res;
-        if(x > 0) {
-            res = fun(val) + x;
-        }
-        else if(x < 0)
-            res = 0;
-        else
-        {
-            res = 1;
-        }
-    }
-
-    private void testf()
-    {
-        double x = number + fun(4) * 4.3;
-    }
-}
-
-class Another
-{
-    public void print(string str)
-    {
-    }
-
-    public void Func()
-    {
-        var test = new Test();
-        test.fun(3);
-
-        //for(int i = 0; i < 10; ++i)
-
-        while(true)
-            print(""hello"");
-        else
-            print(""bye"");
-    }
-}
-";
         public static void Main(string[] args)
         {
             // a = arr[4] + (c - d * 4);
             //TokenStream stream = new TokenStream(File.ReadAllText(args[0]), args[0]);
             Compiler compiler = new Compiler(new CompilerConfig() {
-                OutInfoFile = "test.mc2",
-                Sources = new List<string> { testExpr }
+                OutInfoFile = args[1],
+                Sources = new List<string> { args[0] }
                 
             });
 

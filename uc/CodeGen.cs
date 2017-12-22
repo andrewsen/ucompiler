@@ -106,7 +106,12 @@ namespace uc
                 currentMethod = method;
                 code.Clear();
                 compileMethodBody(method);
-                code.ForEach(entry => write(entry.View + "\n", 8));
+                code.ForEach(entry => {
+                    if(entry.View.EndsWith(":"))
+                        write(entry.View + "\n", 0);
+                    else
+                        write(entry.View + "\n", 8); 
+                });
 
 				write("}\n\n", 4);
             }
@@ -285,7 +290,7 @@ namespace uc
             {
                 compileOp(node);
             }
-            else if(node.Left != null && !(node.Left.Token is TypedToken))
+            else if(!(node.Token is TypedToken))
             {
                 if (node.RelatedNamedData != null)
                     loadVar(node);
