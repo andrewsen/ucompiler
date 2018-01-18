@@ -122,7 +122,8 @@ namespace Translator
         UnboundElse,
         UnboundCase,
         UnboundDefault,
-        KeywordExpected
+        KeywordExpected,
+        OverflowWarning
     }
 
     public enum DeclarationForm

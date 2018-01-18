@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using uc;
 
 namespace Translator
 {
@@ -89,7 +90,8 @@ namespace Translator
 
         public bool CanCastTo(PlainType toPlain)
         {
-            return toPlain.Type > Type && toPlain.Type <= DataTypes.I64;
+            return TypeMatrices.AssignmentMatrix[(int)toPlain.Type, (int)Type] != DataTypes.Null;
+            //return toPlain.Type > Type && toPlain.Type <= DataTypes.I64;
         }
 
         public bool Equals(IType other)
@@ -176,9 +178,32 @@ namespace Translator
             return suitted.First();
         }
 
+        public INamedDataElement ResolveMethod(Token token, List<Node> paramList)
+        {
+            var methods = SymbolTable.Methods;
+            var suitted = methods.Where(m => m.Name == token.Representation && m.ParametersFitsValues(paramList)).ToList();
+            if (suitted.Count > 1)
+                InfoProvider.AddError("Can't resolve method. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
+            else if (suitted.Count == 0)
+                InfoProvider.AddFatal("Can't resolve method. Method not found", ExceptionType.MethodNotFound, token.Position);
+
+            return suitted.First();
+        }
+
         public INamedDataElement ResolveConstructor(Token token, List<IType> paramList)
         {
             var suitted = SymbolTable.Methods.Where(c => c.Name == Name && c.Type == null && c.ParametersFitsArgs(paramList)).ToList();
+            if (suitted.Count > 1)
+                InfoProvider.AddError("Can't resolve constructor. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
+            else if (suitted.Count == 0)
+                InfoProvider.AddFatal("Can't resolve constructor. Constructor not found", ExceptionType.MethodNotFound, token.Position);
+
+            return suitted.First();
+        }
+
+        public INamedDataElement ResolveConstructor(Token token, List<Node> paramList)
+        {
+            var suitted = SymbolTable.Methods.Where(c => c.Name == Name && c.Type == null && c.ParametersFitsValues(paramList)).ToList();
             if (suitted.Count > 1)
                 InfoProvider.AddError("Can't resolve constructor. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
             else if (suitted.Count == 0)

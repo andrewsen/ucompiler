@@ -1,4 +1,5 @@
 ﻿using System;
+using uc;
 
 namespace Translator
 {
@@ -147,7 +148,7 @@ namespace Translator
                 InfoProvider.AddError("Array should have explicit type", ExceptionType.IllegalType, toks.SourcePosition);
 
             IType result;
-            if (Compiler.IsPlainType(identifier))
+            if (TypesHelper.IsPlainType(identifier))
                 result = new PlainType(identifier);
             else if (identifier == "var")
                 result = new ImplicitType();

@@ -1164,17 +1164,17 @@ namespace Translator
             return result;
         }
 
-        private void assignTypes(Node node, CodeBlock parent, List<IType> paramList = null)
+        private void assignTypes(Node node, CodeBlock parent, List<Node> paramList = null)
         {
             // TODO: Andrew Senko: Add declaration checks
-            List<IType> methodArgs = new List<IType>();
+            List<Node> methodArgs = new List<Node>();
             if (node.Token.IsOp(OperationType.FunctionCall))
             {
                 for (int i = 0; i < node.Children.Count - 1; ++i)
                 {
                     var child = node.Children[i];
                     assignTypes(child, parent);
-                    methodArgs.Add(child.Type);
+                    methodArgs.Add(child);
                     //node.Type = CombineType(node.Type, child.Type);
                 }
                 var invokable = node.Left;
@@ -1190,10 +1190,18 @@ namespace Translator
                     // Casting if not equal types
                     if (!parameter.Type.Equals(child.Type))
                     {
-                        Node converter = new Node(new Token { Type = TokenType.Operator, Operation = Operation.Cast, Position = node.Children[i].Token.Position });
-                        converter.Type = parameter.Type;
-                        converter.Left = child;
-                        node.Children[i] = converter;
+                        if (child.Token.IsConstant())
+                        {
+                            child.Type = parameter.Type;
+                            child.Token.ConstType = (ConstantType)parameter.Type.Type;
+                        }
+                        else
+                        {
+                            Node converter = new Node(new Token { Type = TokenType.Operator, Operation = Operation.Cast, Position = node.Children[i].Token.Position });
+                            converter.Type = parameter.Type;
+                            converter.Left = child;
+                            node.Children[i] = converter;
+                        }
                     }
                 }
                 node.Type = invokable.Type;
@@ -1209,7 +1217,7 @@ namespace Translator
                 {
                     var child = constructorNode.Children[i];
                     assignTypes(child, parent);
-                    methodArgs.Add(child.Type);
+                    methodArgs.Add(child);
                 }
 
                 var type = constructorNode.Left;
@@ -1226,15 +1234,23 @@ namespace Translator
                     // Casting if not equal types
                     if (!parameter.Type.Equals(child.Type))
                     {
-                        Node converter = new Node(new Token 
-                        { 
-                            Type = TokenType.Operator, 
-                            Operation = Operation.Cast, 
-                            Position = constructorNode.Children[i].Token.Position 
-                        });
-                        converter.Type = parameter.Type;
-                        converter.Left = child;
-                        constructorNode.Children[i] = converter;
+                        if (child.Token.IsConstant())
+                        {
+                            child.Type = parameter.Type;
+                            child.Token.ConstType = (ConstantType)parameter.Type.Type;
+                        }
+                        else
+                        {
+                            Node converter = new Node(new Token
+                            {
+                                Type = TokenType.Operator,
+                                Operation = Operation.Cast,
+                                Position = constructorNode.Children[i].Token.Position
+                            });
+                            converter.Type = parameter.Type;
+                            converter.Left = child;
+                            constructorNode.Children[i] = converter;
+                        }
                     }
                 }
 
@@ -1307,6 +1323,7 @@ namespace Translator
                 if (node.Children.Count == 1)
                 {
                     assignTypes(node.Left, parent);
+                    node.IsConst = node.Left.IsConst;
                     node.Type = node.Left.Type;
                     assignOperationType(node, node.Left);
 
@@ -1317,6 +1334,7 @@ namespace Translator
                 {
                     assignTypes(node.Right, parent);
                     assignTypes(node.Left, parent);
+                    node.IsConst = node.Left.IsConst && node.Right.IsConst;
 
                     if(node.Token.IsOp(OperationType.Assign) && node.Left.Type is ImplicitType)
                     {
@@ -1336,6 +1354,10 @@ namespace Translator
             }
             else if (node.Token.IsConstant())
             {
+                node.IsConst = true;
+                //if(node.Token.IsInteger())
+                //    node.Type = new PlainType((DataTypes)node.Token.GetMinimalIntType());
+                //else
                 node.Type = new PlainType((DataTypes)node.Token.ConstType);
             }
             else if (node.Token.IsIdentifier())
@@ -1386,7 +1408,7 @@ namespace Translator
             int rightTypeIndex = (int)right.Type.Type;
 
             IType result = null;
-            Node castingNode;
+
             DataTypes resultType = DataTypes.Null;
 
             if (TypeMatrices.OperationMatrixLUT.ContainsKey(operation.Type))
@@ -1394,38 +1416,33 @@ namespace Translator
                 var typeMatrix = TypeMatrices.OperationMatrixLUT[operation.Type];
                 resultType = typeMatrix[leftTypeIndex, rightTypeIndex];
 
-                                                       // TODO: Specify types directly
+                // TODO: Specify types directly
                 if (resultType != DataTypes.Null && !operation.Is(OperationType.ArrayGet, OperationType.MemberAccess))
                 {
-                    var hightestType = TypeMatrices.ImplicitCastMatrix[leftTypeIndex, rightTypeIndex];
-                    if (left.Type.Type == hightestType)
-                    {
-                        // Insert type casting node to right argument
-                        castingNode = createCastingNode(right, left); //createCasingNode(from, to)
-                        castingNode.Left = right;
-                        operationNode.Right = castingNode;
-                        result = left.Type;
-                    }
-                    else
-                    {
-                        // Insert type casting node to left argument
-                        castingNode = createCastingNode(right, left); //createCasingNode(from, to)
-                        castingNode.Left = left;
-                        operationNode.Left = castingNode;
-                        result = left.Type;
-                    }
+                    if (leftTypeIndex != rightTypeIndex)
+                        performCast(operationNode);
                     result = new PlainType(resultType);
                 }
                 else if(operation.Is(OperationType.MemberAccess))
                 {
                     result = right.Type;
                 }
+
+                if(resultType == DataTypes.Null && operation.Is(OperationType.Assign) && right.Token.IsConstant())
+                {
+                    if(constantTypeFits(left.Type.Type, right.Token))
+                    {
+                        right.Type = left.Type;
+                        right.Token.ConstType = (ConstantType)left.Type.Type;
+                        result = left.Type;
+                    }
+                }
             }
             else if (operation.Type == OperationType.ArrayGet)
             {
                 if (left.Type is ArrayType array)
                 {
-                    if(!isIntegerType(right.Type.Type))
+                    if(!TypesHelper.IsIntegerType(right.Type.Type))
                         InfoProvider.AddFatal($"Array index type must be integer. Now `{right.Type.ToString()}`", ExceptionType.IllegalType, operationNode.Token.Position);
                     result = array.ElementType;
                     resultType = result.Type;
@@ -1437,11 +1454,821 @@ namespace Translator
                 InfoProvider.AddFatal($"Operator {operation.View} can't be resolved", ExceptionType.InternalError, operationNode.Token.Position);
             }
 
-            if (resultType == DataTypes.Null)
+            if (result == null)
                 InfoProvider.AddFatal($"Unacceptable operands type combination in operator `{operation.View}` - ({left.Type.ToString()}, {right.Type.ToString()})", 
                                      ExceptionType.IllegalType, operationNode.Token.Position);
 
             operationNode.Type = result;
+        }
+
+        private void performCast(Node operationNode)
+        {
+            var left = operationNode.Left;
+            var right = operationNode.Right;
+            int leftTypeIndex = (int)left.Type.Type;
+            int rightTypeIndex = (int)right.Type.Type;
+            Node castingNode;
+
+            var hightestType = TypeMatrices.ImplicitCastMatrix[leftTypeIndex, rightTypeIndex];
+            if (left.Type.Type == hightestType)
+            {
+                if (right.Token.IsConstant())
+                {
+                    right.Type = left.Type;
+                    right.Token.ConstType = (ConstantType)left.Type.Type;
+                }
+                else
+                {
+                    // Insert type casting node to right argument
+                    castingNode = createCastingNode(right, left); //createCasingNode(from, to)
+                    castingNode.Left = right;
+                    operationNode.Right = castingNode;
+                }
+            }
+            else
+            {
+                if (right.Token.IsConstant())
+                {
+                    left.Type = right.Type;
+                    left.Token.ConstType = (ConstantType)right.Type.Type;
+                }
+                else
+                {
+                    // Insert type casting node to left argument
+                    castingNode = createCastingNode(left, right); //createCasingNode(from, to)
+                    castingNode.Left = left;
+                    operationNode.Left = castingNode;
+                }
+            }
+        }
+
+        private bool constantTypeFits(DataTypes desiredType, Token constant)
+        {
+            if (!TypesHelper.IsNumericType(desiredType))
+                return false;
+            return constant.IsInRangeOf((ConstantType)desiredType);
+        }
+
+        /// <summary>
+        /// Folds constants in typed syntaxt tree. 
+        /// Each tree node must have type assigned. 
+        /// All children of each operation node must have identical types
+        /// </summary>
+        /// <returns></returns>
+        /// <param name="argument">Typed syntax tree or sub-tree</param>
+        public static Token FoldConstants(Node argument)
+        {
+            // TODO: Finish
+            if (!argument.IsConst)
+                InfoProvider.AddFatal("Trying to fold non-constant node", ExceptionType.InternalError, argument.Token.Position);
+            if (!argument.Token.IsOp())
+                return argument.Token;
+            return null;
+        }
+
+        private static (DataTypes, object) foldStep(Node stepRoot)
+        {
+            // TODO: Finish
+            //if (!stepRoot.Token.IsOp())
+                return (DataTypes.Null, null); // (stepRoot.Token.DetectType(), stepRoot.Token.GetValue());
+
+            DataTypes type;
+            object operand1, operand2;
+            object result;
+
+            switch (stepRoot.Token.Operation.Type)
+            {
+                case OperationType.UnaryPlus: // Useless operation
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    switch(type)
+                    {
+                        case DataTypes.Char:
+                            result = +(char)operand1;
+                            break;
+                        case DataTypes.I8:
+                            result = +(sbyte)operand1;
+                            break;
+                        case DataTypes.UI8:
+                            result = +(byte)operand1;
+                            break;
+                        case DataTypes.I16:
+                            result = +(short)operand1;
+                            break;
+                        case DataTypes.UI16:
+                            result = +(ushort)operand1;
+                            break;
+                        case DataTypes.I32:
+                            result = +(int)operand1;
+                            break;
+                        case DataTypes.UI32:
+                            result = +(uint)operand1;
+                            break;
+                        case DataTypes.I64:
+                            result = +(long)operand1;
+                            break;
+                        case DataTypes.UI64:
+                            result = +(ulong)operand1;
+                            break;
+                        case DataTypes.Double:
+                            result = +(double)operand1;
+                            break;
+                    }
+                    break;
+                case OperationType.UnaryMinus:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = -(char)operand1;
+                            break;
+                        case DataTypes.I8:
+                            result = -(sbyte)operand1;
+                            break;
+                        case DataTypes.UI8:
+                            result = -(byte)operand1;
+                            break;
+                        case DataTypes.I16:
+                            result = -(short)operand1;
+                            break;
+                        case DataTypes.UI16:
+                            result = -(ushort)operand1;
+                            break;
+                        case DataTypes.I32:
+                            result = -(int)operand1;
+                            break;
+                        case DataTypes.UI32:
+                            result = -(uint)operand1;
+                            break;
+                        case DataTypes.I64:
+                            result = -(long)operand1;
+                            break;
+                        case DataTypes.UI64:
+                            result = -(long)(ulong)operand1;
+                            InfoProvider.AddWarning("Attempt to negate unsigned long constant. Can cause overflow", ExceptionType.OverflowWarning, stepRoot.Token.Position);
+                            break;
+                        case DataTypes.Double:
+                            result = -(double)operand1;
+                            break;
+                    }
+                    break;
+                case OperationType.Add:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 + (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1+(sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 + (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 + (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 + (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 + (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 + (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 + (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 + (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 + (double)operand2;
+                            break;
+                        case DataTypes.String:
+                            result = (string)operand1 + (string)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Sub:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 - (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 - (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 - (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 - (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 - (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 - (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 - (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 - (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 - (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 - (double)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Mul:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 * (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 * (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 * (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 * (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 * (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 * (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 * (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 * (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 * (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 * (double)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Div:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 / (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 / (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 / (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 / (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 / (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 / (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 / (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 / (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 / (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 / (double)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Mod:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 % (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 % (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 % (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 % (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 % (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 % (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 % (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 % (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 % (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 % (double)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.BinOr:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 | (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 | (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 | (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 | (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 | (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 | (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 | (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 | (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 | (ulong)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.BinAnd:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 & (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 & (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 & (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 & (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 & (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 & (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 & (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 & (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 & (ulong)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Xor:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 ^ (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 ^ (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 ^ (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 ^ (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 ^ (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 ^ (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 ^ (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 ^ (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 ^ (ulong)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Inv:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = ~(char)operand1;
+                            break;
+                        case DataTypes.I8:
+                            result = ~(sbyte)operand1;
+                            break;
+                        case DataTypes.UI8:
+                            result = ~(byte)operand1;
+                            break;
+                        case DataTypes.I16:
+                            result = ~(short)operand1;
+                            break;
+                        case DataTypes.UI16:
+                            result = ~(ushort)operand1;
+                            break;
+                        case DataTypes.I32:
+                            result = ~(int)operand1;
+                            break;
+                        case DataTypes.UI32:
+                            result = ~(uint)operand1;
+                            break;
+                        case DataTypes.I64:
+                            result = ~(long)operand1;
+                            break;
+                        case DataTypes.UI64:
+                            result = ~(ulong)operand1;
+                            break;
+                    }
+                    break;
+                case OperationType.ShiftLeft:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 << (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 << (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 << (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 << (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 << (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 << (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 * (uint)Math.Pow(2, (uint)operand2);
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 * (long)Math.Pow(2, (long)operand2);
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 * (ulong)Math.Pow(2, (ulong)operand2);
+                            break;
+                    }
+                    break;
+                case OperationType.ShiftRight:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 >> (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 >> (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 >> (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 >> (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 >> (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 >> (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 / (uint)Math.Pow(2, (uint)operand2);
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 / (long)Math.Pow(2, (long)operand2);
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 / (ulong)Math.Pow(2, (ulong)operand2);
+                            break;
+                    }
+                    break;
+                case OperationType.Not:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    switch (type)
+                    {
+                        case DataTypes.Bool:
+                            result = !(bool)operand1;
+                            break;
+                    }
+                    break;
+                case OperationType.And:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Bool:
+                            result = (bool)operand1 && (bool)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Or:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Bool:
+                            result = (bool)operand1 || (bool)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Equals:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 == (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 == (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 == (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 == (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 == (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 == (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 == (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 == (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 == (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 == (double)operand2;
+                            break;
+                        case DataTypes.Bool:
+                            result = (bool)operand1 == (bool)operand2;
+                            break;
+                        case DataTypes.String:
+                            result = (string)operand1 == (string)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.NotEquals:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 != (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 != (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 != (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 != (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 != (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 != (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 != (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 != (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 != (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 != (double)operand2;
+                            break;
+                        case DataTypes.Bool:
+                            result = (bool)operand1 != (bool)operand2;
+                            break;
+                        case DataTypes.String:
+                            result = (string)operand1 != (string)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.GreaterEquals:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 >= (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 >= (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 >= (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 >= (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 >= (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 >= (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 >= (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 >= (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 >= (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 >= (double)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.LowerEquals:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 <= (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 <= (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 <= (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 <= (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 <= (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 <= (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 <= (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 <= (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 <= (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 <= (double)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Greater:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 > (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 > (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 > (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 > (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 > (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 > (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 > (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 > (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 > (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 > (double)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Lower:
+                    (type, operand1) = foldStep(stepRoot.Left);
+                    (_, operand2) = foldStep(stepRoot.Right);
+                    switch (type)
+                    {
+                        case DataTypes.Char:
+                            result = (char)operand1 < (char)operand2;
+                            break;
+                        case DataTypes.I8:
+                            result = (sbyte)operand1 < (sbyte)operand2;
+                            break;
+                        case DataTypes.UI8:
+                            result = (byte)operand1 < (byte)operand2;
+                            break;
+                        case DataTypes.I16:
+                            result = (short)operand1 < (short)operand2;
+                            break;
+                        case DataTypes.UI16:
+                            result = (ushort)operand1 < (ushort)operand2;
+                            break;
+                        case DataTypes.I32:
+                            result = (int)operand1 < (int)operand2;
+                            break;
+                        case DataTypes.UI32:
+                            result = (uint)operand1 < (uint)operand2;
+                            break;
+                        case DataTypes.I64:
+                            result = (long)operand1 < (long)operand2;
+                            break;
+                        case DataTypes.UI64:
+                            result = (ulong)operand1 < (ulong)operand2;
+                            break;
+                        case DataTypes.Double:
+                            result = (double)operand1 < (double)operand2;
+                            break;
+                    }
+                    break;
+                case OperationType.Cast:
+                    InfoProvider.AddFatal("Not implemented yet", ExceptionType.NotImplemented, stepRoot.Token.Position);
+                    break;
+            }
         }
 
         private Node createCastingNode(Node from, Node to)
@@ -1483,15 +2310,9 @@ namespace Translator
             InfoProvider.Print();
         }
 
-        public static bool IsPlainType(string type, bool includeVoid = false)
-        {
-            var dt = PlainType.FromString(type);
-            return !(dt == DataTypes.Null || (dt == DataTypes.Void && includeVoid));
-        }
-
         private bool isRegisteredType(string type)
         {
-            if (IsPlainType(type, true))
+            if (TypesHelper.IsPlainType(type, true))
                 return true;
             if (type == VAR)
                 return true;
@@ -1514,16 +2335,6 @@ namespace Translator
             if (fromType is PlainType fromPlain && toType is PlainType toPlain)
                 return fromPlain.CanCastTo(toPlain);
             return false;
-        }
-
-        private bool isIntegerType(DataTypes type)
-        {
-            return type < DataTypes.I64;
-        }
-
-        private bool isNumericType(DataTypes type)
-        {
-            return type < DataTypes.Double;
         }
     }
 }

@@ -292,6 +292,52 @@ namespace uc
         /// <summary>
         /// Logical NOT operation
         /// </summary>
+        public static readonly DataTypes[] UnaryMinusVector = {
+            /*Char*/ Char,
+            /*UI08*/ SI16,
+            /*SI08*/ SI08,
+            /*UI16*/ UI32,
+            /*SI16*/ SI16,
+            /*UI32*/ SI64,
+            /*SI32*/ SI32,
+            /*UI64*/ Null,
+            /*SI64*/ SI64,
+            /*F_64*/ F_64,
+            /*Strn*/ Null,
+            /*Null*/ Null,
+            /*Bool*/ Null,
+            /*Void*/ Null,
+            /*Objt*/ Null,
+            /*Arry*/ Null,
+            /*Clss*/ Null,
+        };
+
+        /// <summary>
+        /// Logical NOT operation
+        /// </summary>
+        public static readonly DataTypes[] UnaryPlusVector = {
+            /*Char*/ Char,
+            /*UI08*/ UI08,
+            /*SI08*/ SI08,
+            /*UI16*/ UI16,
+            /*SI16*/ SI16,
+            /*UI32*/ UI32,
+            /*SI32*/ SI32,
+            /*UI64*/ UI64,
+            /*SI64*/ SI64,
+            /*F_64*/ F_64,
+            /*Strn*/ Null,
+            /*Null*/ Null,
+            /*Bool*/ Null,
+            /*Void*/ Null,
+            /*Objt*/ Null,
+            /*Arry*/ Null,
+            /*Clss*/ Null,
+        };
+
+        /// <summary>
+        /// Logical NOT operation
+        /// </summary>
         public static readonly DataTypes[] NotVector = {
             /*Char*/ Null,
             /*UI08*/ Null,
@@ -373,6 +419,8 @@ namespace uc
             {OperationType.PostInc, InvIncDecVector},
             {OperationType.PostDec, InvIncDecVector},
             {OperationType.Not, NotVector},
+            {OperationType.UnaryMinus, UnaryMinusVector},
+            {OperationType.UnaryPlus, UnaryPlusVector},
         };
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using uc;
 
 namespace Translator
 {
@@ -180,10 +180,33 @@ namespace Translator
                 var parameter = Parameters[i];
                 var argument = argList[i];
                 if (!parameter.Type.Equals(argument) && !Compiler.CanCast(argument, parameter.Type))
+                {
                     return false;
+                }
             }
             return true;
         }
+		
+        public bool ParametersFitsValues(List<Node> argList)
+        {
+            if (Parameters.Count != argList.Count)
+                return false;
+            for (int i = 0; i < argList.Count; ++i)
+            {
+                var parameter = Parameters[i];
+                var argument = argList[i];
+                if (!parameter.Type.Equals(argument) && !Compiler.CanCast(argument.Type, parameter.Type))
+                {
+                    // TODO: Finish
+                    //if(argument.IsConst && TypesHelper.IsIntegerType(argument.Type))
+                    //{
+                    //    var constantToken = Compiler.FoldConstants(argument);
+                    //}
+                    return false;
+                }
+            }
+            return true;
+		}
 
         public INamedDataElement FindParameter(Token token)
         {

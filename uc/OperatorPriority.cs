@@ -31,6 +31,11 @@ namespace uc
             Association = Association.Left;
         }
 
+        public bool Is(OperationType operation)
+        {
+            return Type == operation;
+        }
+
         public bool Is(params OperationType[] operations)
         {
             return operations.Contains(Type);

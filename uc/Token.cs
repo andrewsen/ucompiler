@@ -155,9 +155,7 @@ namespace Translator
 
         public ConstantType GetMinimalIntType()
         {
-            long longVal;
-            ulong ulongVal;
-            if (long.TryParse(Representation, out longVal))
+            if (long.TryParse(Representation, out long longVal))
             {
                 if (longVal >= sbyte.MinValue && longVal <= sbyte.MaxValue)
                     return ConstantType.I8;
@@ -167,7 +165,7 @@ namespace Translator
                     return ConstantType.I32;
                 return ConstantType.I64;
             }
-            if (ulong.TryParse(Representation, out ulongVal))
+            if (ulong.TryParse(Representation, out ulong ulongVal))
             {
                 if (ulongVal >= byte.MinValue && ulongVal <= byte.MaxValue)
                     return ConstantType.UI8;
@@ -186,62 +184,29 @@ namespace Translator
             {
                 case ConstantType.UI16:
                 case ConstantType.Char:
-                {
-                    ushort ush;
-                    return ushort.TryParse(Representation, out ush);
-                }
+                    return ushort.TryParse(Representation, out ushort _);
                 case ConstantType.UI8:
-                {
-                    byte b;
-                    return byte.TryParse(Representation, out b);
-                }
+                    return byte.TryParse(Representation, out byte _);
                 case ConstantType.I8:
-                {
-                    sbyte sb;
-                        return sbyte.TryParse(Representation, out sb);
-                }
+                    return sbyte.TryParse(Representation, out sbyte _);
                 case ConstantType.I16:
-                {
-                    short sh;
-                    return short.TryParse(Representation, out sh);
-                }
+                    return short.TryParse(Representation, out short _);
                 case ConstantType.UI32:
-                {
-                    uint ui;
-                    return uint.TryParse(Representation, out ui);
-                }
+                    return uint.TryParse(Representation, out uint _);
                 case ConstantType.I32:
-                {
-                    int i;
-                    return int.TryParse(Representation, out i);
-                }
+                    return int.TryParse(Representation, out int _);
                 case ConstantType.UI64:
-                {
-                    ulong ul;
-                    return ulong.TryParse(Representation, out ul);
-                }
+                    return ulong.TryParse(Representation, out ulong _);
                 case ConstantType.I64:
-                {
-                    long l;
-                    return long.TryParse(Representation, out l);
-                }
+                    return long.TryParse(Representation, out long _);
                 case ConstantType.Double:
-                {
-                    double d;
-                    return double.TryParse(Representation, NumberStyles.Any, CultureInfo.InvariantCulture, out d);
-                }
+                    return double.TryParse(Representation, NumberStyles.Any, CultureInfo.InvariantCulture, out double _);
                 case ConstantType.Bool:
-                {
                     return Representation == "true" || Representation == "false";
-                }
                 case ConstantType.Null:
-                {
                     return Representation == "null";
-                }
                 case ConstantType.String:
-                {
                     return true;
-                }
                 default:
                     return false;
             }

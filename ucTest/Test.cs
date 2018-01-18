@@ -20,13 +20,8 @@ class Test
 
     private double fun(int x)
     {
-        int val = x + 4;
-        double res = fun(val) + x;
-    }
-
-    private void testf()
-    {
-        double x = number + fun(4) * 4.3;
+        int[] arr = new int[10];
+        arr[3] = 42;
     }
 }
 ";
@@ -60,7 +55,8 @@ class Test
         {
             compiler = new Compiler(new CompilerConfig()
             {
-                Sources = { testExpr2 }
+                OutInfoFile = "/home/senko/qt/ualang/framework_v2/bin/unit-tests.a2",
+                Sources = { "/home/senko/qt/ualang/framework_v2/bin/test.mc2" }
             });
             compiler.Compile();
             Assert.NotNull(compiler);

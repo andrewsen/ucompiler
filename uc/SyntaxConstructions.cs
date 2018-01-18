@@ -105,6 +105,8 @@ namespace Translator
 
     public class Node
 	{
+        public bool IsConst;
+
         public Token Token;
 
         public IType Type;
@@ -150,6 +152,7 @@ namespace Translator
 
         public Node(Token token)
         {
+            IsConst = false;
             Token = token;
             Children = new List<Node>();
         }
