@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Translator
+namespace Compiler
 {
     public class ClassSymbolTable
     {

@@ -1,7 +1,6 @@
 ﻿using System;
 
-
-namespace Translator
+namespace Compiler
 {
     public enum TokenType
     {

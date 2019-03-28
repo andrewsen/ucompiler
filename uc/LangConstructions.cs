@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using uc;
 
-namespace Translator
+namespace Compiler
 {
     public class CommonClassEntry
     {

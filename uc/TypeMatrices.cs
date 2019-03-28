@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using Translator;
 
-namespace uc
+namespace Compiler
 {
     public static class TypeMatrices
     {

@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using uc;
 
-namespace Translator
+namespace Compiler
 {
     public class SourcePosition
     {

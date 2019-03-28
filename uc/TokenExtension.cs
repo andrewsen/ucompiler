@@ -1,7 +1,6 @@
 ﻿using System;
-using uc;
 
-namespace Translator
+namespace Compiler
 {
     public static class TokenExtension
     {

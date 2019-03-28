@@ -26,9 +26,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Globalization;
-using uc;
 
-namespace Translator
+namespace Compiler
 {
     //delegate void NewLineDelegate(TokenStream ts);
 

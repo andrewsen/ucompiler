@@ -21,10 +21,9 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using Translator;
 using System.Globalization;
 
-namespace Translator
+namespace Compiler
 {
     public struct AttributeData
     {

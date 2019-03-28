@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Translator
+namespace Compiler
 {
     public interface IExpression
     {

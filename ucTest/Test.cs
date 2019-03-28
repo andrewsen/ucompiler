@@ -1,10 +1,10 @@
 ﻿using NUnit.Framework;
 using System;
-using Translator;
+using Compiler;
 using System.Collections.Generic;
-using uc;
+using Compiler;
 
-namespace ucTest
+namespace CompilerTest
 {
     [TestFixture()]
     public class Test

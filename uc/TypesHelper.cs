@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Translator;
 
-namespace uc
+namespace Compiler
 {
     public static class TypesHelper
     {

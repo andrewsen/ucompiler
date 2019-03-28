@@ -2,11 +2,10 @@
 using System.Linq;
 using System.IO;
 
-using static Translator.Alphabet;
+using static Compiler.Alphabet;
 using System.Collections.Generic;
-using uc;
 
-namespace Translator
+namespace Compiler
 {
     public class Compiler
     {

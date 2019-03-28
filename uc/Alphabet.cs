@@ -1,7 +1,7 @@
 ﻿// Do not print
 using System;
 
-namespace Translator
+namespace Compiler
 {
     public static class Alphabet
     {
