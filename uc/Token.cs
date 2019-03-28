@@ -1,4 +1,4 @@
-﻿//
+//
 //  Token.cs
 //
 //  Author:

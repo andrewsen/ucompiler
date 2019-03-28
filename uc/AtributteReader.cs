@@ -1,4 +1,4 @@
-﻿//
+//
 //  AtributteReader.cs
 //
 //  Author:

@@ -1,4 +1,4 @@
-﻿// Do not print
+// Do not print
 using System;
 
 namespace Compiler
