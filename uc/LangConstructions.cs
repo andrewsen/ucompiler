@@ -20,20 +20,17 @@ namespace Translator
 
     public interface INamedDataElement
     {
-        string Name
-        {
+        string Name {
             get;
             set;
         }
 
-        IType Type
-        {
+        IType Type {
             get;
             set;
         }
 
-        SourcePosition DeclarationPosition
-        {
+        SourcePosition DeclarationPosition {
             get;
             set;
         }
@@ -41,7 +38,7 @@ namespace Translator
 
     public interface IClassElement : INamedDataElement
     {
-        
+
     }
 
     public class Variable : INamedDataElement
@@ -50,35 +47,30 @@ namespace Translator
         public bool IsAssigned;
         public bool IsUsed;
 
-        public string Name
-        {
+        public string Name {
             get;
             set;
         }
 
-        public IType Type
-        {
+        public IType Type {
             get;
             set;
         }
 
-        public SourcePosition DeclarationPosition
-        {
+        public SourcePosition DeclarationPosition {
             get;
             set;
         }
 
-        public Variable(Method method)
-        {
+        public Variable(Method method) {
             MethodContext = method;
             IsAssigned = false;
             IsUsed = false;
         }
 
-        public static bool operator!=(Variable v1, Variable v2) => !(v1 == v2);
+        public static bool operator !=(Variable v1, Variable v2) => !(v1 == v2);
 
-        public static bool operator==(Variable v1, Variable v2)
-        {
+        public static bool operator ==(Variable v1, Variable v2) {
             if (v1.Name != v2.Name)
                 return false;
             return v1.Type.Equals(v2.Type);
@@ -87,31 +79,26 @@ namespace Translator
 
     public class Parameter : Variable
     {
-        public Parameter(Method method) 
-            : base(method)
-        {
+        public Parameter(Method method)
+            : base(method) {
         }
 
-        public override string ToString()
-        {
+        public override string ToString() {
             return $"{Type.ToString()} {Name}";
         }
     }
 
     public class ParameterList : List<Parameter>
     {
-        public ParameterList()
-        {
+        public ParameterList() {
         }
 
         public ParameterList(IEnumerable<Parameter> paramList)
-            : base(paramList)
-        {
-            
+            : base(paramList) {
+
         }
 
-        public override string ToString()
-        {
+        public override string ToString() {
             var result = string.Join(", ", this);
             return result;
         }
@@ -120,34 +107,30 @@ namespace Translator
     public class Field : IClassElement
     {
         public Scope Scope;
-		public AttributeList AttributeList;
-		public ClassEntryModifiers Modifiers;
+        public AttributeList AttributeList;
+        public ClassEntryModifiers Modifiers;
         public ClassType Class;
-		public int InitialExpressionPosition;
+        public int InitialExpressionPosition;
 
-        public string Name
-        {
+        public string Name {
             get;
             set;
         }
 
-        public IType Type
-        {
+        public IType Type {
             get;
             set;
         }
 
-        public SourcePosition DeclarationPosition
-        {
+        public SourcePosition DeclarationPosition {
             get;
             set;
         }
 
-        public void FromClassEntry(CommonClassEntry entry)
-        {
+        public void FromClassEntry(CommonClassEntry entry) {
             this.AttributeList = entry.AttributeList;
-			this.Name = entry.Name;
-			this.Type = entry.Type;
+            this.Name = entry.Name;
+            this.Type = entry.Type;
             this.Modifiers = entry.Modifiers;
             this.Scope = entry.Scope;
             this.DeclarationPosition = entry.DeclarationPosition;
@@ -183,68 +166,55 @@ namespace Translator
 
         public string Signature => $"{Type.ToString()} {Class.Name}::{Name} ({Parameters.ToString()})";
 
-        public Method()
-        {
+        public Method() {
             _localCount = 0;
             DeclaredLocals = new Dictionary<Variable, int>();
             IntermediateCode = new List<CodeEntry>();
         }
-		
-		public void AddLocal(Variable localVar)
-		{
-            DeclaredLocals.Add(localVar, _localCount++);
-		}
 
-        public void SetParameters(ParameterList paramList)
-        {
+        public void AddLocal(Variable localVar) {
+            DeclaredLocals.Add(localVar, _localCount++);
+        }
+
+        public void SetParameters(ParameterList paramList) {
             _parameters = paramList;
             if (Modifiers.HasFlag(ClassEntryModifiers.Static | ClassEntryModifiers.Constructor))
                 _visibleParameters = paramList;
-            else
-            {
-                _parameters.Insert(0, new Parameter(this)
-                {
+            else {
+                _parameters.Insert(0, new Parameter(this) {
                     DeclarationPosition = DeclarationPosition,
                     Name = Alphabet.THIS,
                     Type = Class,
                 });
-				_visibleParameters = new ParameterList(_parameters.Skip(1));
+                _visibleParameters = new ParameterList(_parameters.Skip(1));
             }
         }
 
-        public bool ParametersFitsArgs(List<IType> argList)
-        {
+        public bool ParametersFitsArgs(List<IType> argList) {
             if (VisibleParameters.Count != argList.Count)
                 return false;
-            for (int i = 0; i < argList.Count; ++i)
-            {
+            for (int i = 0; i < argList.Count; ++i) {
                 var parameter = VisibleParameters[i];
                 var argument = argList[i];
-                if (!parameter.Type.Equals(argument) && !Compiler.CanCast(argument, parameter.Type))
-                {
+                if (!parameter.Type.Equals(argument) && !Compiler.CanCast(argument, parameter.Type)) {
                     return false;
                 }
             }
             return true;
         }
-		
-        public bool ParametersFitsValues(List<Node> argList)
-        {
+
+        public bool ParametersFitsValues(List<Node> argList) {
             if (VisibleParameters.Count != argList.Count)
                 return false;
 
-            for (int i = 0; i < argList.Count; ++i)
-            {
+            for (int i = 0; i < argList.Count; ++i) {
                 var parameter = VisibleParameters[i];
                 var argument = argList[i];
-                if (!parameter.Type.Equals(argument) && !Compiler.CanCast(argument.Type, parameter.Type))
-                {
+                if (!parameter.Type.Equals(argument) && !Compiler.CanCast(argument.Type, parameter.Type)) {
                     // TODO: Finish
-                    if(argument.IsConst && TypesHelper.IsIntegerType(argument.Type) && TypesHelper.IsNumericType(parameter.Type))
-                    {
+                    if (argument.IsConst && TypesHelper.IsIntegerType(argument.Type) && TypesHelper.IsNumericType(parameter.Type)) {
                         var constantToken = Compiler.FoldConstants(argument);
-                        if(TypesHelper.SmallerEquals((DataTypes)constantToken.GetMinimalIntType(), parameter.Type.Type))
-                        {
+                        if (TypesHelper.SmallerEquals((DataTypes)constantToken.GetMinimalIntType(), parameter.Type.Type)) {
                             // FIXME: Andrew Senko: remove direct type construction
                             argument.Type = new PlainType(parameter.Type.Type);
                             argument.Token = constantToken;
@@ -255,15 +225,13 @@ namespace Translator
                 }
             }
             return true;
-		}
+        }
 
-        public INamedDataElement FindParameter(Token token)
-        {
+        public INamedDataElement FindParameter(Token token) {
             return Parameters.Find(p => p.Name == token);
         }
 
-        public bool HasParameter(Token variable)
-        {
+        public bool HasParameter(Token variable) {
             return Parameters.Exists(p => p.Name == variable);
         }
     }

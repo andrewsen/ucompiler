@@ -1,4 +1,4 @@
-﻿﻿//
+﻿//
 //  Token.cs
 //
 //  Author:
@@ -34,7 +34,7 @@ namespace Translator
 
     public class Token
     {
-        private static readonly Token eof = new Token{ Type = TokenType.EOF, Representation = "" };
+        private static readonly Token eof = new Token { Type = TokenType.EOF, Representation = "" };
 
         public TokenType Type;
         public ConstantType ConstType;
@@ -42,20 +42,16 @@ namespace Translator
         public string Representation;
         public SourcePosition Position;
 
-        public string Quoted
-        {
-            get
-            {
-                return "\""+Representation+"\"";
+        public string Quoted {
+            get {
+                return "\"" + Representation + "\"";
             }
         }
 
-        public string Unquoted
-        {
-            get
-            {
-                if(Representation.First() == '"' && Representation.Last() == '"')
-                    return Representation.Substring(1, Representation.Length-2);    // TODO: Shitty
+        public string Unquoted {
+            get {
+                if (Representation.First() == '"' && Representation.Last() == '"')
+                    return Representation.Substring(1, Representation.Length - 2);    // TODO: Shitty
                 return Representation;
             }
         }
@@ -64,99 +60,80 @@ namespace Translator
 
         public SourcePosition TailPosition => new SourcePosition(Position.Source, Position.Line, Position.LineNum, Position.TokenPos + Representation.Length, Position.File);
 
-        public static implicit operator string(Token tok)
-        {
+        public static implicit operator string(Token tok) {
             return tok.Representation;
         }
 
-        public bool IsOneOf(params string[] vals)
-        {
+        public bool IsOneOf(params string[] vals) {
             return vals.Contains(this.Representation);
         }
 
-        public bool IsOneOf(TokenType type, params string[] vals)
-        {
+        public bool IsOneOf(TokenType type, params string[] vals) {
             return vals.Contains(this.Representation) && Type == type;
         }
 
-        public static bool IsNumeric(ConstantType type)
-        {
+        public static bool IsNumeric(ConstantType type) {
             return type <= ConstantType.Double;
         }
 
-        public static bool IsInteger(ConstantType type)
-        {
+        public static bool IsInteger(ConstantType type) {
             return type <= ConstantType.I64;
         }
 
         #region Operations on constants
 
-        public bool IsConstant()
-        {
+        public bool IsConstant() {
             return Type == TokenType.Constant;
         }
 
-        public bool IsNumeric()
-        {
+        public bool IsNumeric() {
             return Type == TokenType.Constant && IsNumeric(ConstType);
         }
 
-        public bool IsInteger()
-        {
+        public bool IsInteger() {
             return Type == TokenType.Constant && IsInteger(ConstType);
         }
 
-        public bool IsDouble()
-        {
+        public bool IsDouble() {
             return Type == TokenType.Constant && ConstType == ConstantType.Double;
         }
 
-        public bool IsBoolean()
-        {
+        public bool IsBoolean() {
             return Type == TokenType.Constant && ConstType == ConstantType.Bool;
         }
 
-        public bool IsString()
-        {
+        public bool IsString() {
             return Type == TokenType.Constant && ConstType == ConstantType.String;
         }
 
-        public bool IsNull()
-        {
+        public bool IsNull() {
             return Type == TokenType.Constant && ConstType == ConstantType.Null;
         }
 
         #endregion
 
-        public bool IsIdentifier()
-        {
+        public bool IsIdentifier() {
             return Type == TokenType.Identifier;
         }
 
-        public bool IsOp()
-        {
+        public bool IsOp() {
             return Type == TokenType.Operator || Type == TokenType.OperatorAssign;
         }
 
-        public bool IsOp(OperationType type)
-        {
+        public bool IsOp(OperationType type) {
             return (Type == TokenType.Operator || Type == TokenType.OperatorAssign) && Operation.Type == type;
         }
 
-        public bool IsDelim()
-        {
+        public bool IsDelim() {
             return Type == TokenType.Delimiter;
         }
 
-        public bool IsSemicolon()
-        {
+        public bool IsSemicolon() {
             return Type == TokenType.Semicolon;
         }
 
-        public ConstantType GetMinimalIntType()
-        {
-            if (long.TryParse(Representation, out long longVal))
-            {
+        public ConstantType GetMinimalIntType() {
+            if (long.TryParse(Representation, out long longVal)) {
                 if (longVal >= sbyte.MinValue && longVal <= sbyte.MaxValue)
                     return ConstantType.I8;
                 if (longVal >= short.MinValue && longVal <= short.MaxValue)
@@ -165,8 +142,7 @@ namespace Translator
                     return ConstantType.I32;
                 return ConstantType.I64;
             }
-            if (ulong.TryParse(Representation, out ulong ulongVal))
-            {
+            if (ulong.TryParse(Representation, out ulong ulongVal)) {
                 if (ulongVal >= byte.MinValue && ulongVal <= byte.MaxValue)
                     return ConstantType.UI8;
                 if (ulongVal >= ushort.MinValue && ulongVal <= ushort.MaxValue)
@@ -178,10 +154,8 @@ namespace Translator
             return ConstantType.Null; // TODO: May fail
         }
 
-        public bool IsInRangeOf(ConstantType val)
-        {
-            switch (val)
-            {
+        public bool IsInRangeOf(ConstantType val) {
+            switch (val) {
                 case ConstantType.UI16:
                 case ConstantType.Char:
                     return ushort.TryParse(Representation, out ushort _);
@@ -213,67 +187,52 @@ namespace Translator
         }
 
         #region Constant getters
-        public byte GetUI8()
-        {
+        public byte GetUI8() {
             return byte.Parse(Representation);
         }
-        public sbyte GetI8()
-        {
+        public sbyte GetI8() {
             return sbyte.Parse(Representation);
         }
-        public ushort GetUI16()
-        {
+        public ushort GetUI16() {
             return ushort.Parse(Representation);
         }
-        public short GetI16()
-        {
+        public short GetI16() {
             return short.Parse(Representation);
         }
-        public uint GetUI32()
-        {
+        public uint GetUI32() {
             return uint.Parse(Representation);
         }
-        public int GetI32()
-        {
+        public int GetI32() {
             return int.Parse(Representation);
         }
-        public ulong GetUI64()
-        {
+        public ulong GetUI64() {
             return ulong.Parse(Representation);
         }
-        public long GetI64()
-        {
+        public long GetI64() {
             return long.Parse(Representation);
         }
-        public double GetDouble()
-        {
+        public double GetDouble() {
             return double.Parse(Representation, NumberStyles.Any, CultureInfo.InvariantCulture);
         }
-        public string GetString()
-        {
+        public string GetString() {
             return Representation;
         }
-        public bool GetBool()
-        {
+        public bool GetBool() {
             return bool.Parse(Representation);
         }
-        public char GetChar()
-        {
+        public char GetChar() {
             return char.Parse(Representation);
         }
         #endregion
 
-        public override string ToString()
-        {
+        public override string ToString() {
             return Representation;
         }
 
-        public object GetValue()
-        {
+        public object GetValue() {
             if (!IsConstant())
                 throw new InternalException("Trying to get value of non-constant token");
-            switch (ConstType)
-            {
+            switch (ConstType) {
                 case ConstantType.Char:
                     return GetChar();
                 case ConstantType.UI8:
@@ -309,8 +268,7 @@ namespace Translator
     {
         public readonly IType BoundType;
 
-        public TypedToken(IType type)
-        {
+        public TypedToken(IType type) {
             BoundType = type;
         }
     }

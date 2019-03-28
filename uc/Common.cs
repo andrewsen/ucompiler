@@ -36,8 +36,7 @@ namespace Translator
     public class InternalException : Exception
     {
         public InternalException(string message)
-            : base(message)
-        {}
+            : base(message) { }
     }
 
     public interface IDirective
@@ -50,13 +49,11 @@ namespace Translator
 
     public class ClassList : List<ClassType>
     {
-        public ClassType Find(Token token)
-        {
+        public ClassType Find(Token token) {
             return Find(token.Representation, token.Position);
         }
 
-        public ClassType Find(string name, SourcePosition position)
-        {
+        public ClassType Find(string name, SourcePosition position) {
             var res = Find(c => c.Name == name);
             if (res is null)
                 InfoProvider.AddFatal($"Class `{name}` not found", ExceptionType.ClassNotFound, position);
@@ -74,7 +71,7 @@ namespace Translator
 
     public class MetadataList : List<Metadata>
     {
-        
+
     }
 
     public class RuntimeMetadata : Metadata
@@ -89,7 +86,7 @@ namespace Translator
         public bool WriteIntermediateInfo = false;
         public bool PureBuild = false;
         public bool OnlyProduceAsmSource = false;
-        public bool RunAssembler = false;   
+        public bool RunAssembler = false;
         public bool DebugBuild = false;
         public string OutInfoFile = null;
         public string OutBinaryFile = null;
@@ -109,50 +106,41 @@ namespace Translator
 
         public static bool HasErrors => errorCount != 0;
 
-        public static void InvokeErrorHandler()
-        {
+        public static void InvokeErrorHandler() {
             ErrorLimitReached?.Invoke();
         }
 
-        public static void AddFatal(string what, ExceptionType ex, SourcePosition where)
-        {
+        public static void AddFatal(string what, ExceptionType ex, SourcePosition where) {
             Add(InfoType.Error, what, ex, where);
             errorCount++;
             ErrorLimitReached?.Invoke();
         }
 
-        public static void AddError(string what, ExceptionType ex, SourcePosition where)
-        {
+        public static void AddError(string what, ExceptionType ex, SourcePosition where) {
             Add(InfoType.Error, what, ex, where);
             errorCount++;
             if (errorCount > ErrorLimit)
                 ErrorLimitReached?.Invoke();
         }
 
-        public static void AddWarning(string what, ExceptionType ex, SourcePosition where)
-        {
+        public static void AddWarning(string what, ExceptionType ex, SourcePosition where) {
             Add(InfoType.Warning, what, ex, where);
         }
 
-        public static void AddInfo(string what, ExceptionType ex, SourcePosition where)
-        {
+        public static void AddInfo(string what, ExceptionType ex, SourcePosition where) {
             Add(InfoType.Info, what, ex, where);
         }
 
-        public static void Add(InfoType type, string what, ExceptionType ex, SourcePosition where)
-        {
+        public static void Add(InfoType type, string what, ExceptionType ex, SourcePosition where) {
             InfoList.Add(new Info(type, what, ex, where));
         }
 
-        public static void Print()
-        {
+        public static void Print() {
             if (InfoList.Count == 0)
                 Console.WriteLine("No errors");
-            foreach (var i in InfoList)
-            {
+            foreach (var i in InfoList) {
                 var color = Console.ForegroundColor;
-                switch (i.Type)
-                {
+                switch (i.Type) {
                     case InfoType.Error:
                         Console.ForegroundColor = ConsoleColor.Red;
                         break;
@@ -172,8 +160,7 @@ namespace Translator
             }
         }
 
-        internal static void AddFatal(string v, object memberNotFound, SourcePosition position)
-        {
+        internal static void AddFatal(string v, object memberNotFound, SourcePosition position) {
             throw new NotImplementedException();
         }
     }
@@ -185,24 +172,21 @@ namespace Translator
         ExceptionType ex;
         SourcePosition where;
 
-        public Info(InfoType type, string what, SourcePosition where)
-        {
+        public Info(InfoType type, string what, SourcePosition where) {
             this.type = type;
             this.what = what;
             this.ex = ExceptionType.None;
             this.where = where;
         }
 
-        public Info(InfoType type, string what)
-        {
+        public Info(InfoType type, string what) {
             this.type = type;
             this.what = what;
             this.ex = ExceptionType.None;
             this.where = null;
         }
 
-        public Info(InfoType type, string what, ExceptionType ex, SourcePosition where)
-        {
+        public Info(InfoType type, string what, ExceptionType ex, SourcePosition where) {
             this.type = type;
             this.what = what;
             this.ex = ex;

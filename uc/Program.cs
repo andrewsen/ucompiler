@@ -6,14 +6,13 @@ namespace Translator
 {
     class MainClass
     {
-        public static void Main(string[] args)
-        {
+        public static void Main(string[] args) {
             // a = arr[4] + (c - d * 4);
             //TokenStream stream = new TokenStream(File.ReadAllText(args[0]), args[0]);
             Compiler compiler = new Compiler(new CompilerConfig() {
                 OutInfoFile = args[1],
                 Sources = new List<string> { args[0] }
-                
+
             });
 
             InfoProvider.ErrorLimitReached += () => {
@@ -31,7 +30,7 @@ namespace Translator
             //InfoProvider.Print();
             //try
             //{
-                compiler.Compile();
+            compiler.Compile();
             //}
             //catch(Exception)
             //{

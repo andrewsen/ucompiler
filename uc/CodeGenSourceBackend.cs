@@ -27,16 +27,14 @@ namespace uc
 
         public List<CodeEntry> Code => code;
 
-        public CodeGenSourceBackend(CompilerConfig conf, DirectiveList directives, MetadataList metadata, ClassList classes)
-        {
+        public CodeGenSourceBackend(CompilerConfig conf, DirectiveList directives, MetadataList metadata, ClassList classes) {
             config = conf;
             directiveList = directives;
             metadataList = metadata;
             classList = classes;
         }
 
-        public void Generate()
-        {
+        public void Generate() {
             //output = new FileInfo(config.OutInfoFile);
             //outputWriter = output.OpenWrite();
             foreach (var clazz in classList)
@@ -45,25 +43,21 @@ namespace uc
             File.WriteAllText(config.OutInfoFile, result.ToString());
         }
 
-        private void write(string line, int offset = 0)
-        {
+        private void write(string line, int offset = 0) {
             result.Append(new string(' ', offset) + line);
         }
 
-        private void writeln(string line, int offset = 0)
-        {
+        private void writeln(string line, int offset = 0) {
             result.Append(new string(' ', offset) + line + "\n");
         }
 
-        private string opToString(CodeEntry entry, int offset)
-        {
+        private string opToString(CodeEntry entry, int offset) {
             if (entry.Operation == OpCodes.LABEL)
                 return (entry.Operands[0] as Label).Name + ":";
             return new string(' ', offset) + entry.ToString();
         }
 
-        private void compileClass(ClassType clazz)
-        {
+        private void compileClass(ClassType clazz) {
             var scope = clazz.Scope.ToString().ToLower();
             string classDecl = $".{scope} {clazz.Name} {{\n";
             write(classDecl);
@@ -77,13 +71,11 @@ namespace uc
 
         }
 
-        private void compileFields(ClassType clazz)
-        {
+        private void compileFields(ClassType clazz) {
             write(".fields\n", 4);
 
             var fields = clazz.SymbolTable.Fields;
-            for (int i = 0; i < fields.Count; ++i)
-            {
+            for (int i = 0; i < fields.Count; ++i) {
                 var fld = fields[i];
                 var scope = fld.Scope.ToString().ToLower();
                 var modifiers = fld.Modifiers.ToString().ToLower();
@@ -95,11 +87,9 @@ namespace uc
             write(".end-fields\n\n", 4);
         }
 
-        private void compileMethods(ClassType clazz)
-        {
+        private void compileMethods(ClassType clazz) {
             var methods = clazz.SymbolTable.Methods;
-            for (int i = 0; i < methods.Count; ++i)
-            {
+            for (int i = 0; i < methods.Count; ++i) {
                 var method = methods[i];
                 var scope = method.Scope.ToString().ToLower();
                 var modifiers = method.Modifiers.ToString().ToLower();
@@ -122,13 +112,11 @@ namespace uc
 
         }
 
-        private void compileMethodBody(Method method)
-        {
+        private void compileMethodBody(Method method) {
             write(".locals\n", 8);
 
             var locals = method.DeclaredLocals;
-            foreach (var pair in locals)
-            {
+            foreach (var pair in locals) {
                 var loc = pair.Key;
                 var idx = pair.Value;
 
@@ -138,26 +126,21 @@ namespace uc
 
             write(".end-locals\n", 8);
 
-            foreach (var entry in method.IntermediateCode)
-            {
+            foreach (var entry in method.IntermediateCode) {
                 writeln(opToString(entry, 8));
             }
         }
 
-        private void compileIExpr(IExpression iexpr)
-        {
+        private void compileIExpr(IExpression iexpr) {
             if (iexpr is CodeBlock blk)
                 compileBlock(blk);
             else if (iexpr is Expression expr)
                 compileExpr(expr);
         }
 
-        private void compileBlock(CodeBlock block)
-        {
-            foreach (var iexpr in block.Expressions)
-            {
-                switch (iexpr)
-                {
+        private void compileBlock(CodeBlock block) {
+            foreach (var iexpr in block.Expressions) {
+                switch (iexpr) {
                     case Return ret:
                         compileReturn(ret);
                         break;
@@ -189,29 +172,24 @@ namespace uc
             }
         }
 
-        private void compileReturn(Return ret)
-        {
+        private void compileReturn(Return ret) {
             compileExpr(ret.Expression);
             code.Add(new CodeEntry(OpCodes.RET));
         }
 
-        private void compileBreak()
-        {
+        private void compileBreak() {
             code.Add(new CodeEntry(OpCodes.JMP, breaks.Peek()));
         }
 
-        private void compileContinue()
-        {
+        private void compileContinue() {
             code.Add(new CodeEntry(OpCodes.JMP, continues.Peek()));
         }
 
-        private void compileIf(If ifExpr)
-        {
+        private void compileIf(If ifExpr) {
             var ifs = ifExpr.Conditions;
 
             var outLabel = new Label();
-            foreach (var cond in ifs)
-            {
+            foreach (var cond in ifs) {
                 compileExpr(ifExpr.MasterIf.Condition);
 
                 var passLabel = new Label();
@@ -226,8 +204,7 @@ namespace uc
             code.Add(new CodeEntry(OpCodes.LABEL, outLabel));
         }
 
-        private void compileWhile(While whileExpr)
-        {
+        private void compileWhile(While whileExpr) {
             var inLabel = new Label();
             var elseLabel = new Label();
             var outLabel = new Label();
@@ -248,8 +225,7 @@ namespace uc
             breaks.Pop();
         }
 
-        private void compileDoWhile(DoWhile doWhileExpr)
-        {
+        private void compileDoWhile(DoWhile doWhileExpr) {
             var inLabel = new Label();
             var outLabel = new Label();
 
@@ -267,8 +243,7 @@ namespace uc
             breaks.Pop();
         }
 
-        private void compileFor(For forExpr)
-        {
+        private void compileFor(For forExpr) {
             // Condition
             compileIExpr(forExpr.Scope.Expressions[0]);
 
@@ -291,23 +266,18 @@ namespace uc
             breaks.Pop();
         }
 
-        private void compileExpr(Expression expr)
-        {
+        private void compileExpr(Expression expr) {
             compileNode(expr.ExpressionRoot);
         }
 
-        private void compileNode(Node node)
-        {
-            if (node.Token == null)
-            {
+        private void compileNode(Node node) {
+            if (node.Token == null) {
                 code.Add(new CodeEntry(OpCodes.NOP));
             }
-            else if (node.Token.IsOp())
-            {
+            else if (node.Token.IsOp()) {
                 compileOp(node);
             }
-            else if (!(node.Token is TypedToken))
-            {
+            else if (!(node.Token is TypedToken)) {
                 if (node.RelatedNamedData != null)
                     loadVar(node);
                 else
@@ -315,26 +285,21 @@ namespace uc
             }
         }
 
-        private void compileOp(Node node)
-        {
+        private void compileOp(Node node) {
             // TODO: Rewrite
-            if (node.Token.IsOp(OperationType.Assign))
-            {
+            if (node.Token.IsOp(OperationType.Assign)) {
                 compileNode(node.Right);
             }
-            else if (node.Token.Operation.Association == Association.Right || node.Token.IsOp(OperationType.FunctionCall))
-            {
+            else if (node.Token.Operation.Association == Association.Right || node.Token.IsOp(OperationType.FunctionCall)) {
                 foreach (var child in node.Children)
                     compileNode(child);
             }
-            else
-            {
+            else {
                 for (int i = node.Children.Count - 1; i >= 0; --i)
                     compileNode(node.Children[i]);
             }
 
-            switch (node.Token.Operation.Type)
-            {
+            switch (node.Token.Operation.Type) {
                 case OperationType.PreInc:
                     code.Add(new CodeEntry(OpCodes.INC));
                     break;
@@ -438,11 +403,9 @@ namespace uc
             }
         }
 
-        private CodeEntry castToOp(IType type)
-        {
+        private CodeEntry castToOp(IType type) {
             OpCodes castOp;
-            switch (type.Type)
-            {
+            switch (type.Type) {
                 case DataTypes.Char:
                     castOp = OpCodes.CONV_CHR;
                     break;
@@ -482,10 +445,8 @@ namespace uc
             return new CodeEntry(castOp);
         }
 
-        private void loadConst(Node node)
-        {
-            switch (node.Type.Type)
-            {
+        private void loadConst(Node node) {
+            switch (node.Type.Type) {
                 case DataTypes.Char:
                     code.Add(new CodeEntry(OpCodes.LDC_CHR, new TokenOperand(node.Token)));
                     break;
@@ -528,10 +489,8 @@ namespace uc
             }
         }
 
-        private void loadVar(Node node)
-        {
-            switch (node.RelatedNamedData)
-            {
+        private void loadVar(Node node) {
+            switch (node.RelatedNamedData) {
                 case Parameter param:
                     //var paramIdx = currentMethod.Parameters.IndexOf(param);
                     code.Add(new CodeEntry(OpCodes.LDARG, new NamedOperand(param)));
@@ -551,10 +510,8 @@ namespace uc
             }
         }
 
-        private void storeVar(Node node)
-        {
-            switch (node.RelatedNamedData)
-            {
+        private void storeVar(Node node) {
+            switch (node.RelatedNamedData) {
                 case Parameter param:
                     //var paramIdx = currentMethod.Parameters.IndexOf(param);
                     code.Add(new CodeEntry(OpCodes.STARG, new NamedOperand(param)));

@@ -1,10 +1,11 @@
-﻿﻿using System;
+﻿using System;
 
 
 namespace Translator
 {
-    public enum TokenType {
-        ImplicitIdentifier, Identifier, Keyword, Delimiter, OperatorAssign, 
+    public enum TokenType
+    {
+        ImplicitIdentifier, Identifier, Keyword, Delimiter, OperatorAssign,
         Operator, Constant, Unknown, EOF, Endl, Semicolon,
     }
 
@@ -20,7 +21,7 @@ namespace Translator
         PostInc = 0x4,  // 100
         PostDec = 0x5,  // 101
         UnaryPlus, UnaryMinus,
-        Add, Sub, Mul, Div, Mod, 
+        Add, Sub, Mul, Div, Mod,
         BinOr, BinAnd, Xor, Inv, ShiftLeft, ShiftRight,
         Not, And, Or, Equals, NotEquals, GreaterEquals, LowerEquals, Greater, Lower,
         Cast,
@@ -41,7 +42,8 @@ namespace Translator
     }
 
     // NOTE: Andrew Senko: ConstantType and DataTypes must stay in same numerical order
-    public enum ConstantType : byte {
+    public enum ConstantType : byte
+    {
         Char, UI8, I8, UI16, I16, UI32, I32, UI64, I64, Double, String, Null, Bool
     }
 
@@ -58,7 +60,7 @@ namespace Translator
     public enum BinaryType
     {
         Executable, Library
-    }   
+    }
 
     public enum InfoType
     {
@@ -89,7 +91,7 @@ namespace Translator
         lValueExpected,
         WhileExpected,
         IllegalEscapeSequence,
-        Brace, 
+        Brace,
         IllegalToken,
         IllegalCast,
         CommaExpected,

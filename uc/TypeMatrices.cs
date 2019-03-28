@@ -415,7 +415,7 @@ namespace uc
         public static readonly Dictionary<OperationType, DataTypes[]> OperationVectorLUT = new Dictionary<OperationType, DataTypes[]> {
             {OperationType.Inv, InvIncDecVector},
             {OperationType.PreInc, InvIncDecVector},
-			{OperationType.PreDec, InvIncDecVector},
+            {OperationType.PreDec, InvIncDecVector},
             {OperationType.PostInc, InvIncDecVector},
             {OperationType.PostDec, InvIncDecVector},
             {OperationType.Not, NotVector},

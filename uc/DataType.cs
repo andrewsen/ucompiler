@@ -7,8 +7,7 @@ namespace Translator
 {
     public interface IType : IEquatable<IType>
     {
-        DataTypes Type
-        {
+        DataTypes Type {
             get;
         }
     }
@@ -26,38 +25,31 @@ namespace Translator
     {
         public DataTypes Type => throw new InternalException("Trying to get type of implicit");
 
-        public bool Equals(IType other)
-        {
+        public bool Equals(IType other) {
             return false;
         }
     }
 
     public class PlainType : IType
     {
-        public DataTypes Type
-        {
+        public DataTypes Type {
             get;
         }
 
-        public PlainType(string plain)
-        {
+        public PlainType(string plain) {
             Type = FromString(plain);
         }
 
-        public PlainType(DataTypes plain)
-        {
+        public PlainType(DataTypes plain) {
             Type = plain;
         }
 
-        public PlainType(ConstantType plain)
-        {
+        public PlainType(ConstantType plain) {
             Type = (DataTypes)plain;
         }
 
-        public static DataTypes FromString(string type)
-        {
-            switch (type)
-            {
+        public static DataTypes FromString(string type) {
+            switch (type) {
                 case "byte":
                     return DataTypes.UI8;
                 case "sbyte":
@@ -95,19 +87,16 @@ namespace Translator
             }
         }
 
-        public override string ToString()
-        {
+        public override string ToString() {
             return string.Format(Type.ToString().ToLower());
         }
 
-        public bool CanCastTo(PlainType toPlain)
-        {
+        public bool CanCastTo(PlainType toPlain) {
             return TypeMatrices.AssignmentMatrix[(int)toPlain.Type, (int)Type] != DataTypes.Null;
             //return toPlain.Type > Type && toPlain.Type <= DataTypes.I64;
         }
 
-        public bool Equals(IType other)
-        {
+        public bool Equals(IType other) {
             if (!(other is PlainType))
                 return false;
             return Type == other.Type;
@@ -118,7 +107,7 @@ namespace Translator
     {
         public string Name;
         public Scope Scope;
-		public bool IsDefined;
+        public bool IsDefined;
         public ClassType Parent;
         public AttributeList AttributeList;
         public ClassSymbolTable SymbolTable;
@@ -126,8 +115,7 @@ namespace Translator
 
         public DataTypes Type => DataTypes.Class;
 
-        public ClassType(string name)
-        {
+        public ClassType(string name) {
             Name = name;
             IsDefined = false;
 
@@ -141,47 +129,39 @@ namespace Translator
             //fieldConstructor.Scope = Scope.Private;
 
             //SymbolTable.Add(fieldConstructor);
-		}
-
-		public override string ToString()
-		{
-			return string.Format(Name);
         }
 
-        public bool Equals(IType other)
-        {
+        public override string ToString() {
+            return string.Format(Name);
+        }
+
+        public bool Equals(IType other) {
             if (!(other is ClassType clazz))
                 return false;
             return clazz.Name == Name;
         }
 
-        public bool DerivatesFrom(ClassType supposedParent)
-        {
+        public bool DerivatesFrom(ClassType supposedParent) {
             return Parent != null && (Parent.Name == supposedParent.Name || Parent.DerivatesFrom(supposedParent));
         }
 
-        public bool HasDeclaration(Token variable)
-        {
+        public bool HasDeclaration(Token variable) {
             return SymbolTable.Contains(variable.Representation);
         }
 
-        public bool HasDeclarationRecursively(Token variable)
-        {
+        public bool HasDeclarationRecursively(Token variable) {
             return HasDeclaration(variable) || (Parent != null && Parent.HasDeclarationRecursively(variable));
         }
 
-        public INamedDataElement FindDeclaration(Token token)
-        {
+        public INamedDataElement FindDeclaration(Token token) {
             return SymbolTable.Find(token.Representation);
         }
 
-        public INamedDataElement FindDeclarationRecursively(Token token)
-        {
+        public INamedDataElement FindDeclarationRecursively(Token token) {
             return FindDeclaration(token) ?? Parent?.FindDeclarationRecursively(token);
         }
 
-        public INamedDataElement ResolveMethod(Token token, List<IType> paramList)
-        {
+        public INamedDataElement ResolveMethod(Token token, List<IType> paramList) {
             var methods = SymbolTable.Methods;
             var suitted = methods.Where(m => m.Name == token.Representation && m.ParametersFitsArgs(paramList)).ToList();
             if (suitted.Count > 1)
@@ -192,8 +172,7 @@ namespace Translator
             return suitted.First();
         }
 
-        public INamedDataElement ResolveMethod(Token token, List<Node> paramList)
-        {
+        public INamedDataElement ResolveMethod(Token token, List<Node> paramList) {
             var methods = SymbolTable.Methods;
             var suitted = methods.Where(m => m.Name == token.Representation && m.ParametersFitsValues(paramList)).ToList();
             if (suitted.Count > 1)
@@ -204,8 +183,7 @@ namespace Translator
             return suitted.First();
         }
 
-        public INamedDataElement ResolveConstructor(Token token, List<IType> paramList)
-        {
+        public INamedDataElement ResolveConstructor(Token token, List<IType> paramList) {
             var suitted = SymbolTable.Methods.Where(c => c.Name == Name && c.Type == null && c.ParametersFitsArgs(paramList)).ToList();
             if (suitted.Count > 1)
                 InfoProvider.AddError("Can't resolve constructor. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
@@ -215,8 +193,7 @@ namespace Translator
             return suitted.First();
         }
 
-        public INamedDataElement ResolveConstructor(Token token, List<Node> paramList)
-        {
+        public INamedDataElement ResolveConstructor(Token token, List<Node> paramList) {
             var suitted = SymbolTable.Methods.Where(c => c.Name == Name && c.Type == null && c.ParametersFitsValues(paramList)).ToList();
             if (suitted.Count > 1)
                 InfoProvider.AddError("Can't resolve constructor. Ambigious overload", ExceptionType.AmbigiousOverload, token.Position);
@@ -234,31 +211,27 @@ namespace Translator
 
         public DataTypes Type => DataTypes.Array;
 
-        public IType GetElementType(ITypeTable itable)
-        { 
+        public IType GetElementType(ITypeTable itable) {
             if (Dimensions == 1)
                 return Inner;
-            if(itable == null)
+            if (itable == null)
                 return new ArrayType(Inner, Dimensions - 1);
             return itable.AddArray(Inner, Dimensions - 1);
         }
 
-        public ArrayType(IType inner, int dimens)
-        {
+        public ArrayType(IType inner, int dimens) {
             Inner = inner;
             Dimensions = dimens;
-		}
+        }
 
-		public override string ToString()
-		{
+        public override string ToString() {
             string dimens = "";
             for (int i = 0; i < Dimensions; ++i)
                 dimens += "[]";
             return string.Format(Inner.ToString() + dimens);
-		}
+        }
 
-        public bool Equals(IType other)
-        {
+        public bool Equals(IType other) {
             if (!(other is ArrayType array))
                 return false;
             return array.Dimensions == Dimensions && array.Inner.Equals(Inner);
@@ -280,8 +253,7 @@ namespace Translator
         public readonly string InnerName;
         public readonly TypeInfoKind Kind;
 
-        public TypeInfo(TypeInfoKind kind, string name, int dimensions=0)
-        {
+        public TypeInfo(TypeInfoKind kind, string name, int dimensions = 0) {
             Kind = kind;
             InnerName = name;
             Dimensions = dimensions;
@@ -292,69 +264,58 @@ namespace Translator
     {
         private List<IType> registeredTypes;
 
-        public void GenerateTypeTable(IEnumerable<IType> predefined)
-        {
+        public void GenerateTypeTable(IEnumerable<IType> predefined) {
             registeredTypes = new List<IType>(predefined);
         }
 
-        public PlainType AddPlain(string typename)
-        {
+        public PlainType AddPlain(string typename) {
             return AddPlain(PlainType.FromString(typename));
         }
 
-        public PlainType AddPlain(ConstantType ctype)
-        {
+        public PlainType AddPlain(ConstantType ctype) {
             return AddPlain((DataTypes)ctype);
         }
 
-        public PlainType AddPlain(DataTypes type)
-        {
+        public PlainType AddPlain(DataTypes type) {
             var result = registeredTypes.OfType<PlainType>()
                                         .FirstOrDefault(p => p.Type == type);
-            if (result == null)
-            {
+            if (result == null) {
                 result = new PlainType(type);
                 registeredTypes.Add(result);
             }
             return result;
         }
 
-        public ClassType AddClass(string name)
-        {
+        public ClassType AddClass(string name) {
             var result = registeredTypes.OfType<ClassType>()
                                         .FirstOrDefault(c => c.Name == name);
-            if(result == null)
-            {
+            if (result == null) {
                 result = new ClassType(name);
                 registeredTypes.Add(result);
             }
             return result;
         }
 
-        public void AddClass(ClassType clazz)
-        {
+        public void AddClass(ClassType clazz) {
             if (registeredTypes.OfType<ClassType>().Contains(clazz))
                 InfoProvider.AddError("Class already registered", ExceptionType.InternalError, clazz.DeclarationPosition);
             registeredTypes.Add(clazz);
         }
 
-        public ArrayType AddArray(IType inner, int dimensions)
-        {
+        public ArrayType AddArray(IType inner, int dimensions) {
             if (!registeredTypes.Contains(inner))
                 InfoProvider.AddFatal("Can't find array base type in registered types", ExceptionType.InternalError, null);
 
             var array = registeredTypes.OfType<ArrayType>()
                                        .FirstOrDefault(a => a.Inner == inner && a.Dimensions == dimensions);
-            if(array == null)
-            {
+            if (array == null) {
                 array = new ArrayType(inner, dimensions);
                 registeredTypes.Add(array);
             }
             return array;
         }
 
-        public ClassType FindComplexType(string name)
-        {
+        public ClassType FindComplexType(string name) {
             return registeredTypes.OfType<ClassType>()
                                   .FirstOrDefault(c => c.Name == name);
         }

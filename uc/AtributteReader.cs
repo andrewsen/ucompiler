@@ -36,28 +36,24 @@ namespace Translator
 
     class AttributeDataList : List<AttributeData>
     {
-        public bool HasKey(string key)
-        {
-            var keys = from a in this 
-                where a.Key == key 
-                    select a;
+        public bool HasKey(string key) {
+            var keys = from a in this
+                       where a.Key == key
+                       select a;
             return keys.Any();
         }
 
-        public AttributeData GetData(string key)
-        {
-            var keys = (from a in this 
-                where a.Key == key 
-                    select a).ToList();
-            if(!keys.Any())
+        public AttributeData GetData(string key) {
+            var keys = (from a in this
+                        where a.Key == key
+                        select a).ToList();
+            if (!keys.Any())
                 throw new IndexOutOfRangeException("No key " + key + " assigned");
             return keys.First();
         }
 
-        public AttributeData this [string key]
-        {
-            get
-            {
+        public AttributeData this[string key] {
+            get {
                 return GetData(key);
             }
         }
@@ -70,8 +66,7 @@ namespace Translator
         internal bool Compilable;
         internal AttributeDataList Data;
 
-        public AttributeObject(string name, bool compilable)
-        {
+        public AttributeObject(string name, bool compilable) {
             Name = name;
             Binded = false;
             Compilable = compilable;
@@ -81,28 +76,24 @@ namespace Translator
 
     public class AttributeList : List<AttributeObject>
     {
-        public bool HasAttribute(string name)
-        {
-            var keys = from a in this 
-                where a.Name == name 
-                    select a;
+        public bool HasAttribute(string name) {
+            var keys = from a in this
+                       where a.Name == name
+                       select a;
             return keys.Any();
         }
 
-        public AttributeObject GetAttrubute(string name)
-        {
-            var keys = (from a in this 
-                where a.Name == name 
-                    select a).ToList();
-            if(!keys.Any())
+        public AttributeObject GetAttrubute(string name) {
+            var keys = (from a in this
+                        where a.Name == name
+                        select a).ToList();
+            if (!keys.Any())
                 throw new IndexOutOfRangeException("No attribute " + name + " found");
             return keys.First();
         }
 
-        public AttributeObject this [string name]
-        {
-            get
-            {
+        public AttributeObject this[string name] {
+            get {
                 return GetAttrubute(name);
             }
         }
@@ -113,47 +104,41 @@ namespace Translator
         private TokenStream ts;
         private AttributeObject aobj = new AttributeObject();
 
-        internal AttributeReader(TokenStream ts)
-        {
+        internal AttributeReader(TokenStream ts) {
             this.ts = ts;
         }
 
-        public AttributeObject Read()
-        {
+        public AttributeObject Read() {
             aobj = read();
             return aobj;
         }
 
-        private AttributeObject read()
-        {
+        private AttributeObject read() {
             aobj.Binded = false;
             aobj.Data = new AttributeDataList();
 
             aobj.Name = ts.Next();
             if (!ts.Current.IsIdentifier())
                 InfoProvider.AddError("Wrong name `" + aobj.Name + "`", ExceptionType.AttributeException, ts.SourcePosition);
-                //throw new AttributeException(aobj.Name, "Wrong name");
+            //throw new AttributeException(aobj.Name, "Wrong name");
             if (ts.IsNext(";")) // Like "RuntimeInternal;"
                 return aobj;
             else if (ts.Is(":")) // Like "Debug:Log"
             {
-                do
-                {
+                do {
                     aobj.Name += ":" + ts.Next();
                     if (!ts.Current.IsIdentifier())
                         InfoProvider.AddError("Wrong name `" + aobj.Name + "`", ExceptionType.AttributeException, ts.SourcePosition);
-                } while(ts.IsNext(":"));
+                } while (ts.IsNext(":"));
                 //_ts.PushBack();
             }
-            if (!ts.Is("("))
-            {
+            if (!ts.Is("(")) {
                 aobj.Binded = true;
                 ts.PushBack();
                 return aobj;
             }
 
-            if (!ts.IsNext("("))
-            {
+            if (!ts.IsNext("(")) {
                 if (ts.IsNext(";"))
                     return aobj;
                 aobj.Binded = true;
@@ -161,18 +146,16 @@ namespace Translator
                 return aobj;
             }
             //_ts.Next();
-            while (true)
-            {
+            while (true) {
                 AttributeData ad = new AttributeData();
                 ad.IsOptional = false;
 
                 var type = ts.Current.ConstType;
                 var val = ts.ToString();
 
-                if(ts.Current.IsIdentifier()) //For smth like @Attr(<Key>=<Value>)
+                if (ts.Current.IsIdentifier()) //For smth like @Attr(<Key>=<Value>)
                 {
-                    if (ts.IsNext("="))
-                    {
+                    if (ts.IsNext("=")) {
                         ad.IsOptional = true;
                         ad.Key = val;
                         val = ts.Next();
@@ -201,16 +184,16 @@ namespace Translator
                         ad.Type = DataTypes.String;
                         break;
                     default:
-                        InfoProvider.AddError("Unsupported data type: " + type.ToString().Replace("DataTypes.",""),
+                        InfoProvider.AddError("Unsupported data type: " + type.ToString().Replace("DataTypes.", ""),
                             ExceptionType.AttributeException, ts.SourcePosition);
                         break;
                 }
 
                 aobj.Data.Add(ad);
 
-                if(ts.IsNext(")"))
+                if (ts.IsNext(")"))
                     break;
-                else if(!ts.Is(","))
+                else if (!ts.Is(","))
                     InfoProvider.AddError("Unexpected character " + ts, ExceptionType.AttributeException, ts.SourcePosition);
                 ts.Next();
 

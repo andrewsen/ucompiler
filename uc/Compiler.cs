@@ -31,8 +31,7 @@ namespace Translator
             DEFATULT, IMPORT, CLASS, STATIC, NATIVE, CONST, PUBLIC, PRIVATE, PROTECTED, NEW, IS, AS
         };
 
-        public Compiler(CompilerConfig config)
-        {
+        public Compiler(CompilerConfig config) {
             Config = config;
 
             // TODO: Add plain types
@@ -52,21 +51,17 @@ namespace Translator
             });
         }
 
-        public void Compile()
-        {
-            foreach (var src in Config.Sources)
-            {
+        public void Compile() {
+            foreach (var src in Config.Sources) {
                 // Parsing classes and their content (fields, props, methods)
                 parseGlobalScope(src);
             }
 
-            foreach (var clazz in classList)
-            {
+            foreach (var clazz in classList) {
                 compileClass(clazz);
             }
 
-            foreach (var src in Config.Sources)
-            {
+            foreach (var src in Config.Sources) {
                 // Compiling 
                 // TODO: Rework it
                 compileFile(src);
@@ -78,26 +73,21 @@ namespace Translator
             asmGen.Generate();
         }
 
-        private void compileClass(ClassType clazz)
-        {
-            foreach (var method in clazz.SymbolTable.Methods)
-            {
+        private void compileClass(ClassType clazz) {
+            foreach (var method in clazz.SymbolTable.Methods) {
                 evalMethod(method);
             }
         }
 
-        private void parseGlobalScope(string src)
-        {
+        private void parseGlobalScope(string src) {
             // FIXME: Only for testing
             TokenStream gStream = new TokenStream(File.ReadAllText(src), src);
             //TokenStream gStream = new TokenStream(src, "<testing>");
 
-            while (!gStream.NextEof())
-            {
+            while (!gStream.NextEof()) {
                 // On most top level we have only attributres, classes and imports
                 Token token = gStream.Current;
-                switch (token)
-                {
+                switch (token) {
                     case ATTR:
                         parseAttribute(gStream);
                         break;
@@ -115,39 +105,32 @@ namespace Translator
             }
         }
 
-        private void parseAttribute(TokenStream gStream)
-        {
+        private void parseAttribute(TokenStream gStream) {
             AttributeReader reader = new AttributeReader(gStream);
 
             var attr = reader.Read();
 
-            switch (attr.Name)
-            {
+            switch (attr.Name) {
                 case "AllowBuiltins":
                     Config.AllowBuiltins = true;
                     break;
                 case "AddMeta":
                 case "Info":
-                case "Define":
-                    {
-                        if ((attr.Data.Count > 2 || attr.Data.Count < 1 || !(attr.Data[0].Value is string)) && !attr.Data[0].IsOptional)
-                        {
+                case "Define": {
+                        if ((attr.Data.Count > 2 || attr.Data.Count < 1 || !(attr.Data[0].Value is string)) && !attr.Data[0].IsOptional) {
                             InfoProvider.AddError("@AddMeta: Incorrect data", ExceptionType.AttributeException, gStream.SourcePosition);
                             //throw new AttributeException("AddMeta", "Incorrect data");
                         }
 
                         Metadata md = new Metadata();
-                        if (attr.Data[0].IsOptional)
-                        {
+                        if (attr.Data[0].IsOptional) {
                             md.Key = attr.Data[0].Key;
                             md.Value = attr.Data[0].Value;
                             md.Type = attr.Data[0].Type;
                         }
-                        else
-                        {
+                        else {
                             md.Key = attr.Data[0].Value as string;
-                            if (attr.Data.Count == 2)
-                            {
+                            if (attr.Data.Count == 2) {
                                 md.Value = attr.Data[1].Value;
                                 md.Type = attr.Data[1].Type;
                             }
@@ -189,30 +172,25 @@ namespace Translator
                     //throw new AttributeException("Entry", "`@Entry` must be binded to function (check `;`)");
                     bindedAttributeList.Add(attr);
                     break;
-                case "Debug:Set":
-                    {
+                case "Debug:Set": {
                         // Making fallthru if debug option is disabled
                         if (!Config.DebugBuild)
                             goto default; // YAAAY ;D
 
-                        if ((attr.Data.Count > 2 || attr.Data.Count < 1 || !(attr.Data[0].Value is string)) && !attr.Data[0].IsOptional)
-                        {
+                        if ((attr.Data.Count > 2 || attr.Data.Count < 1 || !(attr.Data[0].Value is string)) && !attr.Data[0].IsOptional) {
                             InfoProvider.AddError("@Debug:Set: Incorrect data", ExceptionType.AttributeException, gStream.SourcePosition);
                             //throw new AttributeException("Debug:Set", "Incorrect data");
                         }
                         RuntimeMetadata md = new RuntimeMetadata();
                         md.Prefix = attr.Name;
-                        if (attr.Data[0].IsOptional)
-                        {
+                        if (attr.Data[0].IsOptional) {
                             md.Key = attr.Data[0].Key;
                             md.Value = attr.Data[0].Value;
                             md.Type = attr.Data[0].Type;
                         }
-                        else
-                        {
+                        else {
                             md.Key = attr.Data[0].Value as string;
-                            if (attr.Data.Count == 2)
-                            {
+                            if (attr.Data.Count == 2) {
                                 md.Value = attr.Data[1].Value;
                                 md.Type = attr.Data[1].Type;
                             }
@@ -222,10 +200,8 @@ namespace Translator
                         var mlist = from m in metadataList
                                     where m.Key == md.Key
                                     select m;
-                        if (mlist.ToList().Count != 0)
-                        {
-                            foreach (var m in mlist)
-                            {
+                        if (mlist.ToList().Count != 0) {
+                            foreach (var m in mlist) {
                                 metadataList.Remove(m);
                             }
                         }
@@ -239,21 +215,17 @@ namespace Translator
             }
         }
 
-        private void parseImport(TokenStream gStream)
-        {
+        private void parseImport(TokenStream gStream) {
             throw new NotImplementedException();
         }
 
-        private void parseClass(TokenStream gStream, Scope classScope)
-        {
+        private void parseClass(TokenStream gStream, Scope classScope) {
             var className = gStream.GetIdentifierNext();
 
             ClassType clazz = searchComplexType(className);
 
-            if (clazz == null)
-            {
-                clazz = new ClassType(className)
-                {
+            if (clazz == null) {
+                clazz = new ClassType(className) {
                     IsDefined = true,
                     DeclarationPosition = gStream.SourcePosition,
                     Scope = classScope,
@@ -265,8 +237,7 @@ namespace Translator
             else if (clazz.IsDefined)
                 InfoProvider.AddError($"Class with name `{className}` already defined here `{clazz.DeclarationPosition}`",
                                       ExceptionType.ClassRedefinition, gStream.SourcePosition);
-            else
-            {
+            else {
                 classList.Add(clazz);
                 clazz.IsDefined = true;
             }
@@ -275,19 +246,16 @@ namespace Translator
 
             gStream.CheckNext(BLOCK_O, TokenType.Delimiter, ExceptionType.Brace);
 
-            while (!gStream.Eof)
-            {
+            while (!gStream.Eof) {
                 var entry = readCommonClassEntry(clazz, gStream);
                 entry.Class = clazz;
 
                 gStream.Next();
                 //TODO: Move attributes parsing to readCommonClassEntry()
-                if (gStream.Is(ATTR))
-                {
+                if (gStream.Is(ATTR)) {
                     parseAttribute(gStream);
                 }
-                else if (gStream.Is(BLOCK_O) || gStream.Is(SHORT_FUNC_DECL))
-                {
+                else if (gStream.Is(BLOCK_O) || gStream.Is(SHORT_FUNC_DECL)) {
                     // Property
                     if (entry.HasVoidType)
                         InfoProvider.AddError("Void type not allowed for properties", ExceptionType.IllegalType, gStream.SourcePosition);
@@ -298,8 +266,7 @@ namespace Translator
 
                     clazz.SymbolTable.Add(property);
                 }
-                else if (gStream.Is(PAR_O))
-                {
+                else if (gStream.Is(PAR_O)) {
                     // Method
                     if (entry.Modifiers.HasFlag(ClassEntryModifiers.Const))
                         InfoProvider.AddError("Methods can't be const", ExceptionType.IllegalModifier, gStream.SourcePosition);
@@ -310,8 +277,7 @@ namespace Translator
 
                     clazz.SymbolTable.Add(method);
                 }
-                else
-                {
+                else {
                     // Field
                     if (entry.HasVoidType)
                         InfoProvider.AddError("Void type not allowed for fields", ExceptionType.IllegalType, gStream.SourcePosition);
@@ -330,14 +296,12 @@ namespace Translator
             }
         }
 
-        private Field parseField(CommonClassEntry entry, TokenStream gStream)
-        {
+        private Field parseField(CommonClassEntry entry, TokenStream gStream) {
             Field field = new Field();
             if (gStream.Is(SEMICOLON) && entry.Modifiers.HasFlag(ClassEntryModifiers.Const))
                 InfoProvider.AddError("Const field must be initialized immediately", ExceptionType.UninitedConstant, gStream.SourcePosition);
             field.FromClassEntry(entry);
-            if (gStream.Is(ASSIGN))
-            {
+            if (gStream.Is(ASSIGN)) {
                 gStream.Next();
                 field.InitialExpressionPosition = gStream.TokenPosition;
                 gStream.SkipTo(SEMICOLON, false);
@@ -345,14 +309,12 @@ namespace Translator
             return field;
         }
 
-        private Property parseProperty(CommonClassEntry entry, TokenStream gStream)
-        {
+        private Property parseProperty(CommonClassEntry entry, TokenStream gStream) {
             Property property = new Property();
             property.FromClassEntry(entry);
 
             // Readonly property (starts with '->')
-            if (gStream.Is(SHORT_FUNC_DECL))
-            {
+            if (gStream.Is(SHORT_FUNC_DECL)) {
                 // Short readonly properties must contain expression, not block
                 Method getter = new Method();
                 getter.FromClassEntry(entry);
@@ -362,18 +324,14 @@ namespace Translator
 
                 property.Getter = getter;
             }
-            else if (gStream.Is(BLOCK_O))
-            {
-                while (!gStream.Eof)
-                {
-                    if (gStream.Next() == GETTER_DECL)
-                    {
+            else if (gStream.Is(BLOCK_O)) {
+                while (!gStream.Eof) {
+                    if (gStream.Next() == GETTER_DECL) {
                         if (property.Getter != null)
                             InfoProvider.AddError("Getter for this property already exists", ExceptionType.MultipleGetters, gStream.SourcePosition);
                         property.Getter = parsePropertyFunction(entry, gStream);
                     }
-                    else if (gStream.Is(SETTER_DECL))
-                    {
+                    else if (gStream.Is(SETTER_DECL)) {
                         if (property.Setter != null)
                             InfoProvider.AddError("Setter for this property already exists", ExceptionType.MultipleSetters, gStream.SourcePosition);
                         property.Setter = parsePropertyFunction(entry, gStream);
@@ -388,16 +346,14 @@ namespace Translator
             return property;
         }
 
-        private Method parsePropertyFunction(CommonClassEntry entry, TokenStream gStream)
-        {
+        private Method parsePropertyFunction(CommonClassEntry entry, TokenStream gStream) {
             Method function = new Method();
             function.FromClassEntry(entry);
             function.BodyStream = gStream.Fork();
 
             if (gStream.Next() == BLOCK_O)
                 gStream.SkipBraced(BLOCK_CHAR_O, BLOCK_CHAR_C);
-            else
-            {
+            else {
                 gStream.PushBack();
                 gStream.SkipTo(SEMICOLON, true);
             }
@@ -405,22 +361,19 @@ namespace Translator
             return function;
         }
 
-        private Method parseMethod(CommonClassEntry entry, TokenStream gStream)
-        {
+        private Method parseMethod(CommonClassEntry entry, TokenStream gStream) {
             Method method = new Method();
             method.FromClassEntry(entry);
 
             ParameterList paramList = readParams(gStream, method);
             method.SetParameters(paramList);
 
-            if (gStream.Next() == SHORT_FUNC_DECL)
-            {
+            if (gStream.Next() == SHORT_FUNC_DECL) {
                 method.DeclarationForm = DeclarationForm.Short;
                 // Saving method start token (points after '->' symbol)
                 method.BodyStream = gStream.Fork();
             }
-            else if (gStream.Is(BLOCK_O))
-            {
+            else if (gStream.Is(BLOCK_O)) {
                 method.DeclarationForm = DeclarationForm.Full;
                 // Saving method start token (points on '{' symbol)
                 method.BodyStream = gStream.Fork(); //gStream.TokenPosition - BLOCK_O.Length;
@@ -428,23 +381,20 @@ namespace Translator
                 // Skipping method body
                 gStream.SkipBraced(BLOCK_CHAR_O, BLOCK_CHAR_C);
             }
-            else
-            {
+            else {
                 InfoProvider.AddError("Unexpected symbol", ExceptionType.UnexpectedToken, gStream.SourcePosition);
             }
 
             return method;
         }
 
-        private ParameterList readParams(TokenStream gStream, Method method)
-        {
+        private ParameterList readParams(TokenStream gStream, Method method) {
             var plist = new ParameterList();
             //gStream.Next();
             if (gStream.IsNext(PAR_C))
                 return plist;
 
-            while (!gStream.Eof)
-            {
+            while (!gStream.Eof) {
 
                 var param = new Parameter(method);
                 // Search | Predefine strategy
@@ -465,8 +415,7 @@ namespace Translator
             return plist;
         }
 
-        private CommonClassEntry readCommonClassEntry(ClassType clazz, TokenStream gStream)
-        {
+        private CommonClassEntry readCommonClassEntry(ClassType clazz, TokenStream gStream) {
             CommonClassEntry entry = new CommonClassEntry();
 
             entry.AttributeList = bindedAttributeList;
@@ -480,8 +429,7 @@ namespace Translator
 
             if (gStream.Next().Type == TokenType.Identifier)
                 entry.Name = gStream.Current;
-            else if (gStream.Is(PAR_O, TokenType.Delimiter))
-            {
+            else if (gStream.Is(PAR_O, TokenType.Delimiter)) {
                 if (entry.Type.Type != DataTypes.Class)
                     InfoProvider.AddError("Constructor name must be same with class name", ExceptionType.ConstructorName, gStream.SourcePosition);
 
@@ -500,12 +448,10 @@ namespace Translator
             return entry;
         }
 
-        private Scope readScope(TokenStream gStream)
-        {
+        private Scope readScope(TokenStream gStream) {
             var token = gStream.Next();
             Scope scope = Scope.Private;
-            switch (token.ToString())
-            {
+            switch (token.ToString()) {
                 case PUBLIC:
                     scope = Scope.Public;
                     break;
@@ -522,34 +468,28 @@ namespace Translator
             return scope;
         }
 
-        private ClassEntryModifiers readModifiers(TokenStream gStream)
-        {
+        private ClassEntryModifiers readModifiers(TokenStream gStream) {
             // [static [native|const]]
             var token = gStream.Next();
             ClassEntryModifiers modifiers = ClassEntryModifiers.None;
-            if (token == STATIC)
-            {
+            if (token == STATIC) {
                 modifiers |= ClassEntryModifiers.Static;
                 token = gStream.Next();
             }
 
-            if (token == NATIVE)
-            {
+            if (token == NATIVE) {
                 modifiers |= ClassEntryModifiers.Native;
                 gStream.Next();
             }
-            else if (token == CONST)
-            {
+            else if (token == CONST) {
                 modifiers |= ClassEntryModifiers.Const;
                 gStream.Next();
             }
             return modifiers;
         }
 
-        private void evalMethod(Method method)
-        {
-            if (method.DeclarationForm == DeclarationForm.Full)
-            {
+        private void evalMethod(Method method) {
+            if (method.DeclarationForm == DeclarationForm.Full) {
                 method.Body = evalBlock(new CodeBlock(method.Class, method.Class, method), method.BodyStream);
                 method.Body.Parent = method.Class;
                 method.Body.ClassContext = method.Class;
@@ -559,19 +499,16 @@ namespace Translator
                 InfoProvider.AddError("Short form is unsupported now", ExceptionType.NotImplemented, method.DeclarationPosition);
         }
 
-        private CodeBlock evalBlock(CodeBlock parent, TokenStream lStream)
-        {
+        private CodeBlock evalBlock(CodeBlock parent, TokenStream lStream) {
             CodeBlock block = new CodeBlock(parent);
 
-            while (!lStream.Eof)
-            {
+            while (!lStream.Eof) {
                 var entryToken = lStream.Next();
 
                 if (!(entryToken.IsIdentifier() || entryToken.IsSemicolon() || entryToken.IsOp() || (entryToken.IsOneOf(TokenType.Delimiter, BLOCK_C))))
                     InfoProvider.AddError("Identifier, control keyword, type or block expected", ExceptionType.IllegalToken, lStream.SourcePosition);
 
-                switch (entryToken.Representation)
-                {
+                switch (entryToken.Representation) {
                     case IF:
                         evalIf(block, lStream);
                         break;
@@ -623,29 +560,25 @@ namespace Translator
             return block;
         }
 
-        private IExpression evalBlockOrStatement(CodeBlock parent, TokenStream lStream)
-        {
+        private IExpression evalBlockOrStatement(CodeBlock parent, TokenStream lStream) {
             if (lStream.Is(BLOCK_O, TokenType.Delimiter))
                 return evalBlock(parent, lStream);
             return evalExpression(parent, lStream);
         }
 
-        private void evalIf(CodeBlock parent, TokenStream lStream)
-        {
+        private void evalIf(CodeBlock parent, TokenStream lStream) {
             If ifStatement = new If(parent);
             ifStatement.MasterIf = evalConditionalPart(parent, lStream);
             evalIfTail(ifStatement, parent, lStream);
             parent.Expressions.Add(ifStatement);
         }
 
-        private ConditionalPart evalConditionalPart(CodeBlock parent, TokenStream lStream)
-        {
+        private ConditionalPart evalConditionalPart(CodeBlock parent, TokenStream lStream) {
             ConditionalPart ifPart = new ConditionalPart();
             var position = lStream.SourcePosition;
 
             // Now token stream points on next token `if` (should be `(` token)
-            if (!lStream.IsNext(PAR_O, TokenType.Delimiter))
-            {
+            if (!lStream.IsNext(PAR_O, TokenType.Delimiter)) {
                 InfoProvider.AddError("`(` expected after `if` keyword as a beginning of condition statement", ExceptionType.MissingParenthesis, lStream.SourcePosition);
                 lStream.PushBack(); // Doing rollback because that symbol might be a start of expression
             }
@@ -657,14 +590,12 @@ namespace Translator
                 InfoProvider.AddError("Condition in `if` clause should have boolean type, but it does not", ExceptionType.IllegalType, position);
 
             ifPart.Condition = condition;
-            if (lStream.IsNext(BLOCK_O, TokenType.Delimiter))
-            {
+            if (lStream.IsNext(BLOCK_O, TokenType.Delimiter)) {
                 // Block'ed if
                 // if(...) { ... }
                 ifPart.Body = evalBlock(parent, lStream);
             }
-            else
-            {
+            else {
                 // Statement'ed if
                 // if(...) ...;
                 ifPart.Body = evalExpression(parent, lStream);
@@ -672,16 +603,12 @@ namespace Translator
             return ifPart;
         }
 
-        private void evalIfTail(If ifStatement, CodeBlock parent, TokenStream lStream)
-        {
-            while (lStream.IsNext(ELSE, TokenType.Identifier))
-            {
-                if (lStream.IsNext(IF, TokenType.Identifier))
-                {
+        private void evalIfTail(If ifStatement, CodeBlock parent, TokenStream lStream) {
+            while (lStream.IsNext(ELSE, TokenType.Identifier)) {
+                if (lStream.IsNext(IF, TokenType.Identifier)) {
                     ifStatement.ElseIfList.Add(evalConditionalPart(parent, lStream));
                 }
-                else
-                {
+                else {
                     ifStatement.ElsePart = evalBlockOrStatement(parent, lStream);
 
                     // Stopping
@@ -691,14 +618,12 @@ namespace Translator
             lStream.PushBack();
         }
 
-        private void evalFor(CodeBlock parent, TokenStream lStream)
-        {
+        private void evalFor(CodeBlock parent, TokenStream lStream) {
             For forStatement = new For(parent);
             var position = lStream.SourcePosition;
 
             // Now token stream points on next token `if` (should be `(` token)
-            if (!lStream.IsNext(PAR_O, TokenType.Delimiter))
-            {
+            if (!lStream.IsNext(PAR_O, TokenType.Delimiter)) {
                 InfoProvider.AddError("`(` expected after `for` keyword as a beginning of init statement", ExceptionType.MissingParenthesis, lStream.SourcePosition);
                 lStream.PushBack(); // Doing rollback because that symbol might be a start of expression
             }
@@ -719,14 +644,12 @@ namespace Translator
             parent.Expressions.Add(forStatement);
         }
 
-        private void evalWhile(CodeBlock parent, TokenStream lStream)
-        {
+        private void evalWhile(CodeBlock parent, TokenStream lStream) {
             While whileStatement = new While(parent);
             var position = lStream.SourcePosition;
 
             // Now token stream points on next token `if` (should be `(` token)
-            if (!lStream.IsNext(PAR_O, TokenType.Delimiter))
-            {
+            if (!lStream.IsNext(PAR_O, TokenType.Delimiter)) {
                 InfoProvider.AddError("`(` expected after `while` keyword as a beginning of condition statement", ExceptionType.MissingParenthesis, lStream.SourcePosition);
                 lStream.PushBack(); // Doing rollback because that symbol might be a start of expression
             }
@@ -747,8 +670,7 @@ namespace Translator
             parent.Expressions.Add(whileStatement);
         }
 
-        private void evalDoWhile(CodeBlock parent, TokenStream lStream)
-        {
+        private void evalDoWhile(CodeBlock parent, TokenStream lStream) {
             DoWhile whileStatement = new DoWhile(parent);
             var position = lStream.SourcePosition;
 
@@ -759,8 +681,7 @@ namespace Translator
             lStream.CheckNext(WHILE, TokenType.Identifier, ExceptionType.KeywordExpected);
 
             // Now token stream points on next token `if` (should be `(` token)
-            if (!lStream.IsNext(PAR_O, TokenType.Delimiter))
-            {
+            if (!lStream.IsNext(PAR_O, TokenType.Delimiter)) {
                 InfoProvider.AddError("`(` expected after `while` keyword as a beginning of condition statement", ExceptionType.MissingParenthesis, lStream.SourcePosition);
                 lStream.PushBack(); // Doing rollback because that symbol might be a start of expression
             }
@@ -781,20 +702,17 @@ namespace Translator
             //    whileStatement.ElsePart = evalBlockOrStatement(parent, lStream);
         }
 
-        private void evalBreak(CodeBlock parent, TokenStream lStream)
-        {
+        private void evalBreak(CodeBlock parent, TokenStream lStream) {
             lStream.CheckNext(SEMICOLON, TokenType.Semicolon, ExceptionType.Brace);
             parent.Expressions.Add(new Break());
         }
 
-        private void evalContinue(CodeBlock parent, TokenStream lStream)
-        {
+        private void evalContinue(CodeBlock parent, TokenStream lStream) {
             lStream.CheckNext(SEMICOLON, TokenType.Semicolon, ExceptionType.Brace);
             parent.Expressions.Add(new Continue());
         }
 
-        private void evalReturn(CodeBlock parent, TokenStream lStream)
-        {
+        private void evalReturn(CodeBlock parent, TokenStream lStream) {
             Return retStatement = new Return(parent);
             var position = lStream.SourcePosition;
 
@@ -802,8 +720,7 @@ namespace Translator
             var expr = evalExpression(parent, lStream);
 
             var retType = parent.MethodContext.Type;
-            if (!retType.Equals(expr.ExpressionRoot.Type))
-            {
+            if (!retType.Equals(expr.ExpressionRoot.Type)) {
                 var result = tryCreateImplicitCast(expr.ExpressionRoot, retType);
                 if (result == null)
                     InfoProvider.AddFatal($"Can't cast return type {expr.ExpressionRoot.Type.ToString()} to method's type {retType.ToString()}",
@@ -815,11 +732,9 @@ namespace Translator
             parent.Expressions.Add(retStatement);
         }
 
-        public void evalStatement(CodeBlock parent, TokenStream lStream)
-        {
+        public void evalStatement(CodeBlock parent, TokenStream lStream) {
             Variable localVar = null;
-            if (isRegisteredType(lStream.Current))
-            {
+            if (isRegisteredType(lStream.Current)) {
                 localVar = evalLocalVarDeclaration(parent, lStream);
                 parent.AddLocal(localVar);
 
@@ -834,8 +749,7 @@ namespace Translator
             parent.Expressions.Add(expr);
         }
 
-        private Expression evalExpression(CodeBlock parent, TokenStream lStream, ParsingPolicy parsingPolicy = ParsingPolicy.SyncTokens)
-        {
+        private Expression evalExpression(CodeBlock parent, TokenStream lStream, ParsingPolicy parsingPolicy = ParsingPolicy.SyncTokens) {
             var pos = lStream.SourcePosition;
             var expr = buildPostfixForm(lStream, parsingPolicy);
 
@@ -853,8 +767,7 @@ namespace Translator
             return result;
         }
 
-        private Variable evalLocalVarDeclaration(CodeBlock parent, TokenStream lStream)
-        {
+        private Variable evalLocalVarDeclaration(CodeBlock parent, TokenStream lStream) {
             var declPosition = lStream.SourcePosition;
             var type = searchType(lStream.CurrentType(TypeReaderConf.IncludeVar));
             if (type == null)
@@ -873,8 +786,7 @@ namespace Translator
             //    array.Inner = classList.Find(innerClazz.Name, lStream.SourcePosition);
             //}
 
-            Variable local = new Variable(parent.MethodContext)
-            {
+            Variable local = new Variable(parent.MethodContext) {
                 Name = name,
                 Type = type,
                 DeclarationPosition = declPosition,
@@ -883,21 +795,18 @@ namespace Translator
             return local;
         }
 
-        private void checkNamingUsage(Token nameToken, CodeBlock parent)
-        {
+        private void checkNamingUsage(Token nameToken, CodeBlock parent) {
             if (!nameToken.IsIdentifier())
                 InfoProvider.AddFatal($"Identifier expected as variable name", ExceptionType.NamingViolation, nameToken.Position);
             else if (keywords.Contains(nameToken.Representation))
                 InfoProvider.AddFatal($"Forbidden to use reserved words as identifiers", ExceptionType.NamingViolation, nameToken.Position);
-            else if (parent.HasDeclaration(nameToken))
-            {
+            else if (parent.HasDeclaration(nameToken)) {
                 var previousDecl = parent.FindDeclaration(nameToken);
                 InfoProvider.AddError($"Identifier is already in use. Redefinition of {previousDecl.DeclarationPosition}", ExceptionType.VariableRedefinition, nameToken.Position);
             }
         }
 
-        public List<Token> buildPostfixForm(TokenStream stream, ParsingPolicy parsingPolicy = ParsingPolicy.SyncTokens, List<Token> syncTokens = null)
-        {
+        public List<Token> buildPostfixForm(TokenStream stream, ParsingPolicy parsingPolicy = ParsingPolicy.SyncTokens, List<Token> syncTokens = null) {
             // TODO: Andrew Senko: Add unary +/- support
 
             List<Token> resultingExpression = new List<Token>();
@@ -915,12 +824,10 @@ namespace Translator
             /// </summary>
             /// <returns><c>true</c>, if policy was satisfiesed, <c>false</c> otherwise.</returns>
             /// <param name="token">Token.</param>
-            bool satisfiesPolicy(Token token)
-            {
+            bool satisfiesPolicy(Token token) {
                 if (token == Token.EOF)
                     return false;
-                switch (parsingPolicy)
-                {
+                switch (parsingPolicy) {
                     case ParsingPolicy.Brackets:
                         return bracketsCount >= 0;
                     case ParsingPolicy.SyncTokens:
@@ -931,11 +838,9 @@ namespace Translator
                 throw new ArgumentOutOfRangeException(nameof(parsingPolicy), "Invalid parsing policy");
             }
 
-            while (satisfiesPolicy(stream.Current))
-            {
+            while (satisfiesPolicy(stream.Current)) {
                 var token = stream.Current;
-                if (token.IsConstant() || token.IsIdentifier())
-                {
+                if (token.IsConstant() || token.IsIdentifier()) {
                     if (lastToken.IsOneOf(TokenType.Delimiter, PAR_C, INDEXER_C))
                         InfoProvider.AddError("Unexpected identifier after brace", ExceptionType.Brace, stream.SourcePosition);
                     if (lastToken.IsIdentifier())
@@ -943,8 +848,7 @@ namespace Translator
                     resultingExpression.Add(token);
                     lastToken = token;
                 }
-                else if (token.IsOp())
-                {
+                else if (token.IsOp()) {
                     /*
                      * Пока присутствует на вершине стека токен оператор op2, и
                      * Либо оператор op1 лево-ассоциативен и его приоритет меньше, чем у оператора op2 либо равен,
@@ -953,36 +857,30 @@ namespace Translator
                     */
 
                     // Determine if it is prefix or postfix 
-                    if (token.Operation.Is(OperationType.Inc, OperationType.Dec))
-                    {
-                        if (lastToken == Token.EOF || lastToken.IsOp() || lastToken.IsOneOf(TokenType.Delimiter, INDEXER_O, PAR_O))
-                        {
+                    if (token.Operation.Is(OperationType.Inc, OperationType.Dec)) {
+                        if (lastToken == Token.EOF || lastToken.IsOp() || lastToken.IsOneOf(TokenType.Delimiter, INDEXER_O, PAR_O)) {
                             token.Operation.Type = token.Operation.Type | OperationType.PreMask;
                             token.Operation.Priority++;
                         }
-                        else
-                        {
+                        else {
                             token.Operation.Type = token.Operation.Type | OperationType.PostMask;
                             token.Operation.Association = Association.Right;
                         }
                     }
-                    else if (token.Operation.Is(OperationType.New))
-                    {
+                    else if (token.Operation.Is(OperationType.New)) {
                         var sourcePosition = stream.SourcePosition;
                         var tokenPosition = stream.TokenPosition;
                         var type = searchType(stream.NextType(TypeReaderConf.Soft));
                         if (type == null)
                             InfoProvider.AddFatal($"Type `{stream.Current}` not found", ExceptionType.UndefinedType, stream.SourcePosition);
 
-                        if (stream.IsNext(PAR_O, TokenType.Delimiter))
-                        {
+                        if (stream.IsNext(PAR_O, TokenType.Delimiter)) {
                             if (!(type is ClassType))
                                 InfoProvider.AddError("Operator `new` not appliable to this type", ExceptionType.IllegalType, sourcePosition);
                             token.Operation.Type = OperationType.NewObj;
                             stream.TokenPosition = tokenPosition; // Next token will be identifier - constructor call
                         }
-                        else if (stream.Is(INDEXER_O, TokenType.Delimiter))
-                        {
+                        else if (stream.Is(INDEXER_O, TokenType.Delimiter)) {
                             stream.PushBack();
                             token.Operation.Type = OperationType.NewArr;
                             token.Representation = "new[]";
@@ -990,11 +888,9 @@ namespace Translator
                         }
                     }
 
-                    while (opStack.Count > 0 && opStack.Peek().IsOp())
-                    {
+                    while (opStack.Count > 0 && opStack.Peek().IsOp()) {
                         if ((token.Operation.Association == Association.Left && token.Operation.Priority <= opStack.Peek().Operation.Priority)
-                           || (token.Operation.Association == Association.Right && token.Operation.Priority <= opStack.Peek().Operation.Priority))
-                        {
+                           || (token.Operation.Association == Association.Right && token.Operation.Priority <= opStack.Peek().Operation.Priority)) {
                             resultingExpression.Add(opStack.Pop());
                         }
                         else
@@ -1003,23 +899,20 @@ namespace Translator
                     opStack.Push(token);
                     lastToken = token;
                 }
-                else if (token == INDEXER_O)
-                {
+                else if (token == INDEXER_O) {
                     if (lastToken.IsOp() && !lastToken.IsOp(OperationType.NewArr))
                         InfoProvider.AddError("Unexpected `[`", ExceptionType.Brace, stream.SourcePosition);
                     opStack.Push(token);
                     lastToken = token;
                 }
-                else if (token == INDEXER_C)
-                {
+                else if (token == INDEXER_C) {
                     // a = b[c + 4];
                     // a b[c + 4] - 6 =
                     // a b c 4 + [] 6 - =
                     if (lastToken.IsOp())
                         InfoProvider.AddError("Unexpected `]`", ExceptionType.Brace, stream.SourcePosition);
 
-                    while (opStack.Count > 0 && opStack.Peek() != INDEXER_O)
-                    {
+                    while (opStack.Count > 0 && opStack.Peek() != INDEXER_O) {
                         if (opStack.Peek() == PAR_O)
                             InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
                         resultingExpression.Add(opStack.Pop());
@@ -1034,8 +927,7 @@ namespace Translator
                     resultingExpression.Add(token);
                     lastToken = token;
                 }
-                else if (token == PAR_O)
-                {
+                else if (token == PAR_O) {
                     bracketsCount++;
                     // Process as function
                     // x = fun(1, g(5, y*(3-i), 8));
@@ -1043,8 +935,7 @@ namespace Translator
                     // x = f(1, 2+3, a*(b-c), true);
                     // x f ()=
 
-                    if (lastToken.IsIdentifier())
-                    {
+                    if (lastToken.IsIdentifier()) {
                         // Function call operator
                         var callToken = new Token();
                         callToken.Representation = "()";
@@ -1055,12 +946,10 @@ namespace Translator
                         var lookupStream = stream.Fork();
                         if (lookupStream.IsNext(PAR_C, TokenType.Delimiter))
                             callToken.Operation.ArgumentCount = 0;
-                        else
-                        {
+                        else {
                             callToken.Operation.ArgumentCount = 1;
                             int callBracketsCount = 1;
-                            while (!lookupStream.Eof && callBracketsCount > 0)
-                            {
+                            while (!lookupStream.Eof && callBracketsCount > 0) {
                                 if (lookupStream.IsNext(PAR_C, TokenType.Delimiter))
                                     callBracketsCount--;
                                 else if (lookupStream.Is(PAR_O))
@@ -1069,13 +958,10 @@ namespace Translator
                                     callToken.Operation.ArgumentCount++;
                             }
                         }
-                        if (opStack.Count != 0 && !opStack.Peek().IsOp(OperationType.NewObj))
-                        {
-                            while (opStack.Count > 0 && opStack.Peek().IsOp())
-                            {
+                        if (opStack.Count != 0 && !opStack.Peek().IsOp(OperationType.NewObj)) {
+                            while (opStack.Count > 0 && opStack.Peek().IsOp()) {
                                 if ((callToken.Operation.Association == Association.Left && callToken.Operation.Priority <= opStack.Peek().Operation.Priority)
-                                    || (callToken.Operation.Association == Association.Right && callToken.Operation.Priority <= opStack.Peek().Operation.Priority))
-                                {
+                                    || (callToken.Operation.Association == Association.Right && callToken.Operation.Priority <= opStack.Peek().Operation.Priority)) {
                                     resultingExpression.Add(opStack.Pop());
                                 }
                                 else
@@ -1091,8 +977,7 @@ namespace Translator
                     opStack.Push(token);
                     lastToken = token;
                 }
-                else if (token == PAR_C)
-                {
+                else if (token == PAR_C) {
                     bool isFuncCall = false;
                     bracketsCount--;
                     if (bracketsCount < 0 && (parsingPolicy == ParsingPolicy.Both || parsingPolicy == ParsingPolicy.Brackets))
@@ -1100,15 +985,12 @@ namespace Translator
 
                     if (lastToken.IsOp() && lastToken.Operation.Type != OperationType.FunctionCall)
                         InfoProvider.AddError("Unexpected `)`", ExceptionType.Brace, stream.SourcePosition);
-                    while (opStack.Count > 0 && opStack.Peek() != PAR_O)
-                    {
+                    while (opStack.Count > 0 && opStack.Peek() != PAR_O) {
                         var op = opStack.Peek();
-                        if (op.Operation.Type == OperationType.FunctionCall)
-                        {
+                        if (op.Operation.Type == OperationType.FunctionCall) {
                             isFuncCall = true;
                         }
-                        else
-                        {
+                        else {
                             isFuncCall = false;
                         }
                         resultingExpression.Add(opStack.Pop());
@@ -1118,8 +1000,7 @@ namespace Translator
                     //else if(!isFuncCall)
                     opStack.Pop();
                 }
-                else if (token == COMMA)
-                {
+                else if (token == COMMA) {
                     if (!(lastToken.IsConstant() || lastToken.IsIdentifier() || lastToken == PAR_C || lastToken == INDEXER_C))
                         InfoProvider.AddError("Unexpected comma", ExceptionType.UnexpectedComma, stream.SourcePosition);
                     functionArgCounter.Push(functionArgCounter.Pop() + 1);
@@ -1130,13 +1011,11 @@ namespace Translator
                 }
 
                 token = stream.Next();
-                if (token == BLOCK_C)
-                {
+                if (token == BLOCK_C) {
                     InfoProvider.AddError("Semicolon expected", ExceptionType.SemicolonExpected, lastToken.TailPosition);
                 }
             }
-            while (opStack.Count > 0)
-            {
+            while (opStack.Count > 0) {
                 var op = opStack.Pop();
                 if (op == PAR_O)
                     InfoProvider.AddError("`)` is missed", ExceptionType.MissingParenthesis, stream.SourcePosition);
@@ -1147,14 +1026,11 @@ namespace Translator
             return resultingExpression;
         }
 
-        public Node expressionToAST(List<Token> expr)
-        {
+        public Node expressionToAST(List<Token> expr) {
             var root = makeASTNode(new Stack<Token>(expr));
 
-            if (root.Token.Type == TokenType.OperatorAssign)
-            {
-                var newRoot = new Node(new Token
-                {
+            if (root.Token.Type == TokenType.OperatorAssign) {
+                var newRoot = new Node(new Token {
                     Type = TokenType.Operator,
                     Representation = "=",
                     Operation = Operation.From("="),
@@ -1163,8 +1039,7 @@ namespace Translator
 
                 newRoot.Left = root.Left;
                 newRoot.Right = root;
-                root.Token = new Token
-                {
+                root.Token = new Token {
                     Type = TokenType.Operator,
                     Representation = root.Token.Representation.TrimEnd('='),
                     Operation = Operation.From(root.Token.Representation.TrimEnd('=')),
@@ -1178,23 +1053,19 @@ namespace Translator
             return root;
         }
 
-        private Node makeASTNode(Stack<Token> polish)
-        {
+        private Node makeASTNode(Stack<Token> polish) {
             if (polish.Count == 0)
                 return null;
             var tok = polish.Pop();
 
             Node result = new Node(tok);
-            if (tok.IsOp())
-            {
-                if (tok.Operation.IsUnary)
-                {
+            if (tok.IsOp()) {
+                if (tok.Operation.IsUnary) {
                     result.Left = makeASTNode(polish);
                     if (result.Left == null)
                         InfoProvider.AddError($"Argument of {tok} is missing", ExceptionType.BadExpression, tok.Position);
                 }
-                else if (!tok.Operation.IsUnary && tok.Operation.Type != OperationType.FunctionCall)
-                {
+                else if (!tok.Operation.IsUnary && tok.Operation.Type != OperationType.FunctionCall) {
                     result.Right = makeASTNode(polish);
                     result.Left = makeASTNode(polish);
                     if (result.Left == null && result.Right == null)
@@ -1224,14 +1095,11 @@ namespace Translator
             return result;
         }
 
-        private void assignTypes(Node node, CodeBlock parent, List<Node> paramList = null)
-        {
+        private void assignTypes(Node node, CodeBlock parent, List<Node> paramList = null) {
             // TODO: Andrew Senko: Add declaration checks
             List<Node> methodArgs = new List<Node>();
-            if (node.Token.IsOp(OperationType.FunctionCall))
-            {
-                for (int i = 0; i < node.Children.Count - 1; ++i)
-                {
+            if (node.Token.IsOp(OperationType.FunctionCall)) {
+                for (int i = 0; i < node.Children.Count - 1; ++i) {
                     var child = node.Children[i];
                     assignTypes(child, parent);
                     methodArgs.Add(child);
@@ -1244,21 +1112,17 @@ namespace Translator
 
                 var method = invokable.RelatedNamedData as Method;
                 int argc = node.Children.Count - 1;
-                for (int i = 0; i < argc; ++i)
-                {
+                for (int i = 0; i < argc; ++i) {
                     var child = node.Children[i];
                     var parameter = method.VisibleParameters[argc - i - 1];
 
                     // Casting if not equal types
-                    if (!parameter.Type.Equals(child.Type))
-                    {
-                        if (child.Token.IsConstant())
-                        {
+                    if (!parameter.Type.Equals(child.Type)) {
+                        if (child.Token.IsConstant()) {
                             child.Type = parameter.Type;
                             child.Token.ConstType = (ConstantType)parameter.Type.Type;
                         }
-                        else
-                        {
+                        else {
                             Node converter = new Node(new Token { Type = TokenType.Operator, Operation = Operation.Cast, Position = node.Children[i].Token.Position });
                             converter.Type = parameter.Type;
                             converter.Left = child;
@@ -1268,15 +1132,13 @@ namespace Translator
                 }
                 node.Type = invokable.Type;
             }
-            else if (node.Token.IsOp(OperationType.NewObj))
-            {
+            else if (node.Token.IsOp(OperationType.NewObj)) {
                 if (node.Children.Count != 1 || !node.Left.Token.IsOp(OperationType.FunctionCall))
                     InfoProvider.AddFatal("Constructor call expected in `new` statement", ExceptionType.ConsructorExpected, node.Token.Position);
 
                 var constructorNode = node.Left;
 
-                for (int i = 0; i < constructorNode.Children.Count - 1; ++i)
-                {
+                for (int i = 0; i < constructorNode.Children.Count - 1; ++i) {
                     var child = constructorNode.Children[i];
                     assignTypes(child, parent);
                     methodArgs.Add(child);
@@ -1288,23 +1150,18 @@ namespace Translator
                 constructorNode.RelatedNamedData = constructor;
 
                 int argc = constructorNode.Children.Count - 1;
-                for (int i = 0; i < argc; ++i)
-                {
+                for (int i = 0; i < argc; ++i) {
                     var child = constructorNode.Children[i];
                     var parameter = constructor.VisibleParameters[argc - i - 1];
 
                     // Casting if not equal types
-                    if (!parameter.Type.Equals(child.Type))
-                    {
-                        if (child.Token.IsConstant())
-                        {
+                    if (!parameter.Type.Equals(child.Type)) {
+                        if (child.Token.IsConstant()) {
                             child.Type = parameter.Type;
                             child.Token.ConstType = (ConstantType)parameter.Type.Type;
                         }
-                        else
-                        {
-                            Node converter = new Node(new Token
-                            {
+                        else {
+                            Node converter = new Node(new Token {
                                 Type = TokenType.Operator,
                                 Operation = Operation.Cast,
                                 Position = constructorNode.Children[i].Token.Position
@@ -1321,8 +1178,7 @@ namespace Translator
                 node.Children = constructorNode.Children.GetRange(0, argc);
                 node.RelatedNamedData = constructor;
             }
-            else if (node.Token.IsOp(OperationType.NewArr))
-            {
+            else if (node.Token.IsOp(OperationType.NewArr)) {
                 if (node.Children.Count != 1 || !node.Left.Token.IsOp(OperationType.ArrayGet))
                     InfoProvider.AddFatal("Array size specification in `new` statement expected", ExceptionType.ArraySpec, node.Token.Position);
 
@@ -1352,8 +1208,7 @@ namespace Translator
                 //if (typeToCheck is ClassType clazz && !clazz.IsDefined && !searchType(clazz.Name))
                 //        InfoProvider.AddFatal("Unknown type in `new array` operator", ExceptionType.IllegalType, node.Token.Position);
             }
-            else if (node.Token.IsOp(OperationType.MemberAccess))
-            {
+            else if (node.Token.IsOp(OperationType.MemberAccess)) {
                 // x.f() - x y . ()
                 var owner = node.Left;
                 var member = node.Right;
@@ -1366,8 +1221,7 @@ namespace Translator
                     InfoProvider.AddError("Identifier expected", ExceptionType.InvalidMemberAccess, member.Token.Position);
 
                 // Field, property
-                if (paramList == null)
-                {
+                if (paramList == null) {
                     // TODO: Encapsulation
                     var decl = ownerClass.FindDeclaration(member.Token);
                     if (decl is null)
@@ -1387,10 +1241,8 @@ namespace Translator
                     assignOperationType(node, node.Left, node.Right);
                 }
             }
-            else if (node.Token.IsOp())
-            {
-                if (node.Children.Count == 1)
-                {
+            else if (node.Token.IsOp()) {
+                if (node.Children.Count == 1) {
                     assignTypes(node.Left, parent);
                     node.IsConst = node.Left.IsConst;
                     node.Type = node.Left.Type;
@@ -1399,14 +1251,12 @@ namespace Translator
                     if (node.Left.Token.Type == TokenType.Identifier && node.Left.RelatedNamedData is Variable lValueLocal)
                         lValueLocal.IsUsed = true;
                 }
-                else if (node.Children.Count == 2)
-                {
+                else if (node.Children.Count == 2) {
                     assignTypes(node.Right, parent);
                     assignTypes(node.Left, parent);
                     node.IsConst = node.Left.IsConst && node.Right.IsConst;
 
-                    if (node.Token.IsOp(OperationType.Assign) && node.Left.Type is ImplicitType)
-                    {
+                    if (node.Token.IsOp(OperationType.Assign) && node.Left.Type is ImplicitType) {
                         node.Left.Type = node.Left.RelatedNamedData.Type = node.Right.Type;
                     }
 
@@ -1421,30 +1271,25 @@ namespace Translator
                 else // WTF. Can't be
                     InfoProvider.AddError("Too many childrens in operator", ExceptionType.InternalError, node.Token.Position);
             }
-            else if (node.Token.IsConstant())
-            {
+            else if (node.Token.IsConstant()) {
                 node.IsConst = true;
                 //if(node.Token.IsInteger())
                 //    node.Type = new PlainType((DataTypes)node.Token.GetMinimalIntType());
                 //else
                 node.Type = typeTable.AddPlain((DataTypes)node.Token.ConstType);
             }
-            else if (node.Token.IsIdentifier())
-            {
+            else if (node.Token.IsIdentifier()) {
                 var local = parent.FindDeclaration(node.Token);
-                if (local != null)
-                {
+                if (local != null) {
                     node.RelatedNamedData = local;
                     node.Type = local.Type;
 
-                    if (local is Field fld)
-                    {
+                    if (local is Field fld) {
                         Console.WriteLine($"Field `{node.Token}` have to be thised here ${node.Token.Position.Line}");
                         insertThis(node, parent.MethodContext);
                     }
                 }
-                else if (paramList != null)
-                {
+                else if (paramList != null) {
                     var method = parent.ClassContext.ResolveMethod(node.Token, paramList);
                     node.Type = method.Type;
                     node.RelatedNamedData = method;
@@ -1457,24 +1302,19 @@ namespace Translator
             }
         }
 
-        private void insertThis(Node node, Method method)
-        {
-            Node element = new Node(new Token()
-            {
+        private void insertThis(Node node, Method method) {
+            Node element = new Node(new Token() {
                 Representation = node.Token.Representation,
                 Type = node.Token.Type,
-            })
-            {
+            }) {
                 RelatedNamedData = node.RelatedNamedData,
                 Type = node.Type,
             };
 
-            Node thisNode = new Node(new Token()
-            {
+            Node thisNode = new Node(new Token() {
                 Representation = THIS,
                 Type = TokenType.Identifier,
-            })
-            {
+            }) {
                 RelatedNamedData = method.Parameters[0],
                 Type = method.Class,
             };
@@ -1487,29 +1327,25 @@ namespace Translator
             //node.RelatedNamedData = null;
         }
 
-        private void assignOperationType(Node operationNode, Node operand)
-        {
+        private void assignOperationType(Node operationNode, Node operand) {
             var operation = operationNode.Token.Operation;
             int typeIndex = (int)operand.Type.Type;
 
             IType result = null;
             DataTypes resultType = DataTypes.Null;
 
-            if (TypeMatrices.OperationVectorLUT.ContainsKey(operation.Type))
-            {
+            if (TypeMatrices.OperationVectorLUT.ContainsKey(operation.Type)) {
                 var typeVector = TypeMatrices.OperationVectorLUT[operation.Type];
                 resultType = typeVector[typeIndex];
                 result = operand.Type;
             }
-            else
-            {
+            else {
                 InfoProvider.AddFatal($"Operator {operation.View} can't be resolved", ExceptionType.InternalError, operationNode.Token.Position);
             }
             operationNode.Type = result;
         }
 
-        private void assignOperationType(Node operationNode, Node left, Node right)
-        {
+        private void assignOperationType(Node operationNode, Node left, Node right) {
             var operation = operationNode.Token.Operation;
 
             int leftTypeIndex = (int)left.Type.Type;
@@ -1519,27 +1355,22 @@ namespace Translator
 
             DataTypes resultType = DataTypes.Null;
 
-            if (TypeMatrices.OperationMatrixLUT.ContainsKey(operation.Type))
-            {
+            if (TypeMatrices.OperationMatrixLUT.ContainsKey(operation.Type)) {
                 var typeMatrix = TypeMatrices.OperationMatrixLUT[operation.Type];
                 resultType = typeMatrix[leftTypeIndex, rightTypeIndex];
 
                 // TODO: Specify types directly
-                if (resultType != DataTypes.Null && !operation.Is(OperationType.ArrayGet, OperationType.MemberAccess))
-                {
+                if (resultType != DataTypes.Null && !operation.Is(OperationType.ArrayGet, OperationType.MemberAccess)) {
                     if (leftTypeIndex != rightTypeIndex)
                         performCast(operationNode);
                     result = typeTable.AddPlain(resultType);
                 }
-                else if (operation.Is(OperationType.MemberAccess))
-                {
+                else if (operation.Is(OperationType.MemberAccess)) {
                     result = right.Type;
                 }
 
-                if (resultType == DataTypes.Null && operation.Is(OperationType.Assign) && right.Token.IsConstant())
-                {
-                    if (constantTypeFits(left.Type.Type, right.Token))
-                    {
+                if (resultType == DataTypes.Null && operation.Is(OperationType.Assign) && right.Token.IsConstant()) {
+                    if (constantTypeFits(left.Type.Type, right.Token)) {
                         // FIXME: Possible bug
                         //right.Type = left.Type;
                         //right.Token.ConstType = (ConstantType)left.Type.Type;
@@ -1549,10 +1380,8 @@ namespace Translator
                     }
                 }
             }
-            else if (operation.Type == OperationType.ArrayGet)
-            {
-                if (left.Type is ArrayType array)
-                {
+            else if (operation.Type == OperationType.ArrayGet) {
+                if (left.Type is ArrayType array) {
                     if (!TypesHelper.IsIntegerType(right.Type.Type))
                         InfoProvider.AddFatal($"Array index type must be integer. Now `{right.Type.ToString()}`", ExceptionType.IllegalType, operationNode.Token.Position);
                     result = array.GetElementType(typeTable);
@@ -1560,8 +1389,7 @@ namespace Translator
                 }
                 InfoProvider.AddFatal($"Indexable type must be an array. Now `{left.Type.ToString()}`", ExceptionType.IllegalType, operationNode.Token.Position);
             }
-            else
-            {
+            else {
                 InfoProvider.AddFatal($"Operator {operation.View} can't be resolved", ExceptionType.InternalError, operationNode.Token.Position);
             }
 
@@ -1572,8 +1400,7 @@ namespace Translator
             operationNode.Type = result;
         }
 
-        private void performCast(Node operationNode)
-        {
+        private void performCast(Node operationNode) {
             var left = operationNode.Left;
             var right = operationNode.Right;
             int leftTypeIndex = (int)left.Type.Type;
@@ -1581,30 +1408,24 @@ namespace Translator
             Node castingNode;
 
             var hightestType = TypeMatrices.ImplicitCastMatrix[leftTypeIndex, rightTypeIndex];
-            if (left.Type.Type == hightestType)
-            {
-                if (right.Token.IsConstant())
-                {
+            if (left.Type.Type == hightestType) {
+                if (right.Token.IsConstant()) {
                     right.Type = left.Type;
                     right.Token.ConstType = (ConstantType)left.Type.Type;
                 }
-                else
-                {
+                else {
                     // Insert type casting node to right argument
                     castingNode = createCastingNode(right, left); //createCasingNode(from, to)
                     castingNode.Left = right;
                     operationNode.Right = castingNode;
                 }
             }
-            else
-            {
-                if (right.Token.IsConstant())
-                {
+            else {
+                if (right.Token.IsConstant()) {
                     left.Type = right.Type;
                     left.Token.ConstType = (ConstantType)right.Type.Type;
                 }
-                else
-                {
+                else {
                     // Insert type casting node to left argument
                     castingNode = createCastingNode(left, right); //createCasingNode(from, to)
                     castingNode.Left = left;
@@ -1613,8 +1434,7 @@ namespace Translator
             }
         }
 
-        private bool constantTypeFits(DataTypes desiredType, Token constant)
-        {
+        private bool constantTypeFits(DataTypes desiredType, Token constant) {
             if (!TypesHelper.IsNumericType(desiredType))
                 return false;
             return constant.IsInRangeOf((ConstantType)desiredType);
@@ -1627,8 +1447,7 @@ namespace Translator
         /// </summary>
         /// <returns></returns>
         /// <param name="argument">Typed syntax tree or sub-tree</param>
-        public static Token FoldConstants(Node argument)
-        {
+        public static Token FoldConstants(Node argument) {
             // TODO: Finish
             if (!argument.IsConst)
                 InfoProvider.AddFatal("Trying to fold non-constant node", ExceptionType.InternalError, argument.Token.Position);
@@ -1637,8 +1456,7 @@ namespace Translator
 
             var (type, val) = foldStep(argument);
 
-            return new Token()
-            {
+            return new Token() {
                 ConstType = (ConstantType)type,
                 Representation = val.ToString(),
                 Position = argument.Token.Position,
@@ -1646,8 +1464,7 @@ namespace Translator
             };
         }
 
-        private static (DataTypes, object) foldStep(Node stepRoot)
-        {
+        private static (DataTypes, object) foldStep(Node stepRoot) {
             // TODO: Finish
             if (!stepRoot.Token.IsOp())
                 return ((DataTypes)stepRoot.Token.ConstType, stepRoot.Token.GetValue()); // (stepRoot.Token.DetectType(), stepRoot.Token.GetValue());
@@ -1656,12 +1473,10 @@ namespace Translator
             object operand1, operand2;
             object result = null;
 
-            switch (stepRoot.Token.Operation.Type)
-            {
+            switch (stepRoot.Token.Operation.Type) {
                 case OperationType.UnaryPlus: // Useless operation
                     (type, operand1) = foldStep(stepRoot.Left);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = +(char)operand1;
                             break;
@@ -1696,8 +1511,7 @@ namespace Translator
                     break;
                 case OperationType.UnaryMinus:
                     (type, operand1) = foldStep(stepRoot.Left);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = -(char)operand1;
                             break;
@@ -1734,8 +1548,7 @@ namespace Translator
                 case OperationType.Add:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 + (char)operand2;
                             break;
@@ -1774,8 +1587,7 @@ namespace Translator
                 case OperationType.Sub:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 - (char)operand2;
                             break;
@@ -1811,8 +1623,7 @@ namespace Translator
                 case OperationType.Mul:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 * (char)operand2;
                             break;
@@ -1848,8 +1659,7 @@ namespace Translator
                 case OperationType.Div:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 / (char)operand2;
                             break;
@@ -1885,8 +1695,7 @@ namespace Translator
                 case OperationType.Mod:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 % (char)operand2;
                             break;
@@ -1922,8 +1731,7 @@ namespace Translator
                 case OperationType.BinOr:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 | (char)operand2;
                             break;
@@ -1956,8 +1764,7 @@ namespace Translator
                 case OperationType.BinAnd:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 & (char)operand2;
                             break;
@@ -1990,8 +1797,7 @@ namespace Translator
                 case OperationType.Xor:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 ^ (char)operand2;
                             break;
@@ -2023,8 +1829,7 @@ namespace Translator
                     break;
                 case OperationType.Inv:
                     (type, operand1) = foldStep(stepRoot.Left);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = ~(char)operand1;
                             break;
@@ -2057,8 +1862,7 @@ namespace Translator
                 case OperationType.ShiftLeft:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 << (char)operand2;
                             break;
@@ -2091,8 +1895,7 @@ namespace Translator
                 case OperationType.ShiftRight:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 >> (char)operand2;
                             break;
@@ -2124,8 +1927,7 @@ namespace Translator
                     break;
                 case OperationType.Not:
                     (type, operand1) = foldStep(stepRoot.Left);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Bool:
                             result = !(bool)operand1;
                             break;
@@ -2134,8 +1936,7 @@ namespace Translator
                 case OperationType.And:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Bool:
                             result = (bool)operand1 && (bool)operand2;
                             break;
@@ -2144,8 +1945,7 @@ namespace Translator
                 case OperationType.Or:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Bool:
                             result = (bool)operand1 || (bool)operand2;
                             break;
@@ -2154,8 +1954,7 @@ namespace Translator
                 case OperationType.Equals:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 == (char)operand2;
                             break;
@@ -2197,8 +1996,7 @@ namespace Translator
                 case OperationType.NotEquals:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 != (char)operand2;
                             break;
@@ -2240,8 +2038,7 @@ namespace Translator
                 case OperationType.GreaterEquals:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 >= (char)operand2;
                             break;
@@ -2277,8 +2074,7 @@ namespace Translator
                 case OperationType.LowerEquals:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 <= (char)operand2;
                             break;
@@ -2314,8 +2110,7 @@ namespace Translator
                 case OperationType.Greater:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 > (char)operand2;
                             break;
@@ -2351,8 +2146,7 @@ namespace Translator
                 case OperationType.Lower:
                     (type, operand1) = foldStep(stepRoot.Left);
                     (_, operand2) = foldStep(stepRoot.Right);
-                    switch (type)
-                    {
+                    switch (type) {
                         case DataTypes.Char:
                             result = (char)operand1 < (char)operand2;
                             break;
@@ -2392,30 +2186,25 @@ namespace Translator
             return (type, result);
         }
 
-        private Node createCastingNode(Node from, Node to)
-        {
+        private Node createCastingNode(Node from, Node to) {
             return createCastingNode(from, to.Type);
         }
 
-        private Node createCastingNode(Node from, IType to)
-        {
+        private Node createCastingNode(Node from, IType to) {
             var node = new Node(new Token { Type = TokenType.Operator, Operation = Operation.Cast, Position = from.Token.Position });
             node.Type = to;
             return node;
         }
 
-        private Node tryCreateImplicitCast(Node node, IType toType)
-        {
+        private Node tryCreateImplicitCast(Node node, IType toType) {
             var resultingType = TypeMatrices.ImplicitCastMatrix[(int)toType.Type, (int)node.Type.Type];
             if (resultingType == DataTypes.Null)
                 return null;
             return createCastingNode(node, toType);
         }
 
-        private void compileFile(string src)
-        {
-            foreach (var clazz in classList)
-            {
+        private void compileFile(string src) {
+            foreach (var clazz in classList) {
                 Console.WriteLine("Class `{0}`", clazz.Name);
                 Console.WriteLine("\tFields:");
                 foreach (var field in clazz.SymbolTable.Fields)
@@ -2431,8 +2220,7 @@ namespace Translator
             InfoProvider.Print();
         }
 
-        private bool isRegisteredType(string type)
-        {
+        private bool isRegisteredType(string type) {
             if (TypesHelper.IsPlainType(type, true))
                 return true;
             if (type == VAR)
@@ -2449,8 +2237,7 @@ namespace Translator
         /// <returns><c>true</c>, if implicit cast is acceptable, <c>false</c> otherwise.</returns>
         /// <param name="fromType">Source type (from what we cast)</param>
         /// <param name="toType">Target type (to what we cast)</param>
-        public static bool CanCast(IType fromType, IType toType)
-        {
+        public static bool CanCast(IType fromType, IType toType) {
             if (fromType is ClassType fromClass && toType is ClassType toClass)
                 return fromClass.DerivatesFrom(toClass);
             if (fromType is PlainType fromPlain && toType is PlainType toPlain)
@@ -2458,32 +2245,27 @@ namespace Translator
             return false;
         }
 
-        private ClassType searchComplexType(string name)
-        {
+        private ClassType searchComplexType(string name) {
             var type = typeTable.FindComplexType(name);
 
             // Search in current module
-            if (type == null)
-            {
+            if (type == null) {
                 type = classList.FirstOrDefault(c => c.Name == name);
                 if (type != null)
                     typeTable.AddClass(type);
             }
 
             // Search in external modules
-            if (type == null)
-            {
+            if (type == null) {
                 // TODO: Add search in external modules
             }
 
             return type;
         }
 
-        private IType searchType(TypeInfo typeInfo)
-        {
+        private IType searchType(TypeInfo typeInfo) {
             IType type = null;
-            if (typeInfo.Kind == TypeInfoKind.Complex)
-            {
+            if (typeInfo.Kind == TypeInfoKind.Complex) {
                 type = searchComplexType(typeInfo.InnerName);
                 if (type == null)
                     return null;
@@ -2493,30 +2275,26 @@ namespace Translator
             else // Plain, not array
                 type = typeTable.AddPlain(typeInfo.InnerName);
 
-            if (typeInfo.Dimensions > 0)
-            {
+            if (typeInfo.Dimensions > 0) {
                 type = typeTable.AddArray(type, typeInfo.Dimensions);
             }
 
             return type;
         }
 
-        private IType searchOrPredefineType(TypeInfo typeInfo)
-        {
+        private IType searchOrPredefineType(TypeInfo typeInfo) {
             IType type = null;
             if (typeInfo.Kind == TypeInfoKind.Complex)
                 type = searchComplexType(typeInfo.InnerName);
 
-            if (type == null)
-            {
+            if (type == null) {
                 if (typeInfo.Kind == TypeInfoKind.Complex)
                     type = typeTable.AddClass(typeInfo.InnerName);
                 else
                     type = typeTable.AddPlain(typeInfo.InnerName);
             }
 
-            if (typeInfo.Dimensions > 0)
-            {
+            if (typeInfo.Dimensions > 0) {
                 type = typeTable.AddArray(type, typeInfo.Dimensions);
             }
 

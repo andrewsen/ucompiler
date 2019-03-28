@@ -5,113 +5,94 @@ namespace Translator
 {
     public static class TokenExtension
     {
-        public static string GetIdentifier(this TokenStream toks)
-        {
+        public static string GetIdentifier(this TokenStream toks) {
             var id = toks.Current;
             if (id.Type != TokenType.Identifier)
                 InfoProvider.AddError("Identifier expected", ExceptionType.IllegalToken, toks.SourcePosition);
             return id.ToString();
         }
 
-        public static string GetIdentifierNext(this TokenStream toks)
-        {
+        public static string GetIdentifierNext(this TokenStream toks) {
             var id = toks.Next();
             if (id.Type != TokenType.Identifier)
                 InfoProvider.AddError("Identifier expected", ExceptionType.IllegalToken, toks.SourcePosition);
             return id.ToString();
         }
 
-        public static bool Is(this TokenStream toks, string str)
-        {
+        public static bool Is(this TokenStream toks, string str) {
             return toks.Current == str;
         }
 
-        public static bool Is(this TokenStream toks, string str, TokenType tokType)
-        {
+        public static bool Is(this TokenStream toks, string str, TokenType tokType) {
             return toks.Current == str && toks.Current.Type == tokType;
         }
 
-        public static bool Is(this TokenStream toks, string str, ConstantType constType)
-        {
+        public static bool Is(this TokenStream toks, string str, ConstantType constType) {
             return toks.Current == str && toks.Current.ConstType == constType;
         }
 
-        public static bool IsNext(this TokenStream toks, string str)
-        {
+        public static bool IsNext(this TokenStream toks, string str) {
             return toks.Next() == str;
         }
 
-        public static bool IsNext(this TokenStream toks, string str, TokenType tokType)
-        {
+        public static bool IsNext(this TokenStream toks, string str, TokenType tokType) {
             return toks.Next() == str && toks.Current.Type == tokType;
         }
 
-        public static bool IsNext(this TokenStream toks, string str, ConstantType constType)
-        {
+        public static bool IsNext(this TokenStream toks, string str, ConstantType constType) {
             return toks.Next() == str && toks.Current.ConstType == constType;
         }
 
-        public static void CheckNext(this TokenStream toks, string str, TokenType type, ExceptionType extype)
-        {
-            if(!toks.IsNext(str, type))
-                InfoProvider.AddError("`"+str+"` expected", extype, toks.SourcePosition);
+        public static void CheckNext(this TokenStream toks, string str, TokenType type, ExceptionType extype) {
+            if (!toks.IsNext(str, type))
+                InfoProvider.AddError("`" + str + "` expected", extype, toks.SourcePosition);
         }
 
-        public static void Check(this TokenStream toks, string str, TokenType type, ExceptionType extype)
-        {
-            if(!toks.Is(str, type))
-                InfoProvider.AddError("`"+str+"` expected", extype, toks.SourcePosition);
+        public static void Check(this TokenStream toks, string str, TokenType type, ExceptionType extype) {
+            if (!toks.Is(str, type))
+                InfoProvider.AddError("`" + str + "` expected", extype, toks.SourcePosition);
         }
 
-        public static string CollectUntil(this TokenStream toks, TokenType tokType, bool include=true)
-        {
+        public static string CollectUntil(this TokenStream toks, TokenType tokType, bool include = true) {
             string result = "";
 
-            while (toks.Current.Type != tokType)
-            {
+            while (toks.Current.Type != tokType) {
                 result += toks.Current.Representation + " ";
                 toks.Next();
             }
 
-            if (!include)
-            {
+            if (!include) {
                 toks.PushBack();
                 return result.TrimEnd();
             }
             return result + toks.Current.Representation;
         }
 
-        public static string CollectNextUntil(this TokenStream toks, TokenType tokType, bool include = true)
-        {
+        public static string CollectNextUntil(this TokenStream toks, TokenType tokType, bool include = true) {
             string result = "";
 
-            while (toks.Next().Type != tokType)
-            {
+            while (toks.Next().Type != tokType) {
                 result += toks.Current.Representation + " ";
             }
 
-            if (!include)
-            {
+            if (!include) {
                 toks.PushBack();
                 return result.TrimEnd();
             }
             return result + toks.Current.Representation;
         }
 
-        public static TypeInfo CurrentType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None) 
-        {
+        public static TypeInfo CurrentType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None) {
             string identifier = toks.GetIdentifier();
             return readType(toks, identifier, conf);
         }
 
-        public static TypeInfo NextType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None)
-        {
+        public static TypeInfo NextType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None) {
             string identifier = toks.GetIdentifierNext();
             return readType(toks, identifier, conf);
         }
 
-        private static TypeInfo readType(TokenStream toks, string identifier, TypeReaderConf conf)
-        {
+        private static TypeInfo readType(TokenStream toks, string identifier, TypeReaderConf conf) {
             if (identifier == "void" && !conf.HasFlag(TypeReaderConf.IncludeVoid))
                 InfoProvider.AddError("Unexpected `void` type", ExceptionType.IllegalType, toks.SourcePosition);
             else if (identifier == "var" && !conf.HasFlag(TypeReaderConf.IncludeVar))
@@ -120,22 +101,18 @@ namespace Translator
             int dimens = 0;
             int tempPos;
 
-            while (!toks.Eof)
-            {
+            while (!toks.Eof) {
                 tempPos = toks.TokenPosition;
-                if (toks.IsNext("["))
-                {
+                if (toks.IsNext("[")) {
                     dimens++;
                 }
-                else
-                {
+                else {
                     toks.PushBack();
                     break;
                 }
                 if (!conf.HasFlag(TypeReaderConf.Soft))
                     toks.CheckNext("]", TokenType.Delimiter, ExceptionType.Brace);
-                else if(!toks.IsNext("]"))
-                {
+                else if (!toks.IsNext("]")) {
                     --dimens;
                     toks.TokenPosition = tempPos;
                     break;

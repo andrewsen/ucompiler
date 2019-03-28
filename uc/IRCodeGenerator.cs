@@ -15,8 +15,7 @@ namespace uc
     {
         public readonly INamedDataElement element;
 
-        public NamedOperand(INamedDataElement val)
-        {
+        public NamedOperand(INamedDataElement val) {
             element = val;
         }
 
@@ -27,8 +26,7 @@ namespace uc
     {
         public readonly Token InnerToken;
 
-        public TokenOperand(Token inner)
-        {
+        public TokenOperand(Token inner) {
             InnerToken = inner;
         }
 
@@ -39,8 +37,7 @@ namespace uc
     {
         public readonly IType Type;
 
-        public TypeOperand(IType inner)
-        {
+        public TypeOperand(IType inner) {
             Type = inner;
         }
 
@@ -61,14 +58,12 @@ namespace uc
         public readonly OpCodes Operation;
         public readonly IOperand[] Operands;
 
-        public CodeEntry(OpCodes op, params IOperand[] operands)
-        {
+        public CodeEntry(OpCodes op, params IOperand[] operands) {
             Operation = op;
             Operands = operands;
         }
 
-        public override string ToString()
-        {
+        public override string ToString() {
             return $"{Operation.ToString().ToLower()} {string.Join(" ", (object[])Operands)}";
         }
     }
@@ -80,36 +75,29 @@ namespace uc
         private Stack<Label> continues = new Stack<Label>();
         private Stack<Label> breaks = new Stack<Label>();
 
-        public IRCodeGenerator(Method method)
-        {
+        public IRCodeGenerator(Method method) {
             _method = method;
         }
 
-        public void Generate()
-        {
+        public void Generate() {
             compileMethodBody(_method);
         }
 
-        private void compileMethodBody(Method method)
-        {
+        private void compileMethodBody(Method method) {
             method.IntermediateCode = new List<CodeEntry>();
             compileBlock(method.Body);
         }
 
-        private void compileIExpr(IExpression iexpr)
-        {
+        private void compileIExpr(IExpression iexpr) {
             if (iexpr is CodeBlock blk)
                 compileBlock(blk);
             else if (iexpr is Expression expr)
                 compileExpr(expr);
         }
 
-        private void compileBlock(CodeBlock block)
-        {
-            foreach (var iexpr in block.Expressions)
-            {
-                switch (iexpr)
-                {
+        private void compileBlock(CodeBlock block) {
+            foreach (var iexpr in block.Expressions) {
+                switch (iexpr) {
                     case Return ret:
                         compileReturn(ret);
                         break;
@@ -136,34 +124,29 @@ namespace uc
                         break;
                     case CodeBlock childBlock:
                         compileBlock(childBlock);
-                        break;                    
+                        break;
                 }
             }
         }
 
-        private void compileReturn(Return ret)
-        {
+        private void compileReturn(Return ret) {
             compileExpr(ret.Expression);
             _method.IntermediateCode.Add(new CodeEntry(OpCodes.RET));
         }
 
-        private void compileBreak()
-        {
+        private void compileBreak() {
             _method.IntermediateCode.Add(new CodeEntry(OpCodes.JMP, breaks.Peek()));
         }
 
-        private void compileContinue()
-        {
+        private void compileContinue() {
             _method.IntermediateCode.Add(new CodeEntry(OpCodes.JMP, continues.Peek()));
         }
 
-        private void compileIf(If ifExpr)
-        {
+        private void compileIf(If ifExpr) {
             var ifs = ifExpr.Conditions;
 
             var outLabel = new Label();
-            foreach (var cond in ifs)
-            {
+            foreach (var cond in ifs) {
                 compileExpr(ifExpr.MasterIf.Condition);
 
                 var passLabel = new Label();
@@ -178,8 +161,7 @@ namespace uc
             _method.IntermediateCode.Add(new CodeEntry(OpCodes.LABEL, outLabel));
         }
 
-        private void compileWhile(While whileExpr)
-        {
+        private void compileWhile(While whileExpr) {
             var inLabel = new Label();
             var elseLabel = new Label();
             var outLabel = new Label();
@@ -200,9 +182,8 @@ namespace uc
             breaks.Pop();
         }
 
-        private void compileDoWhile(DoWhile doWhileExpr)
-        {
-            var inLabel =  new Label();
+        private void compileDoWhile(DoWhile doWhileExpr) {
+            var inLabel = new Label();
             var outLabel = new Label();
 
             continues.Push(inLabel);
@@ -219,14 +200,13 @@ namespace uc
             breaks.Pop();
         }
 
-        private void compileFor(For forExpr)
-        {
+        private void compileFor(For forExpr) {
             // Condition
             compileIExpr(forExpr.Scope.Expressions[0]);
 
-            var inLabel =   new Label();
+            var inLabel = new Label();
             var elseLabel = new Label();
-            var outLabel =  new Label();
+            var outLabel = new Label();
 
             continues.Push(inLabel);
             breaks.Push(elseLabel);
@@ -243,23 +223,18 @@ namespace uc
             breaks.Pop();
         }
 
-        private void compileExpr(Expression expr)
-        {
+        private void compileExpr(Expression expr) {
             compileNode(expr.ExpressionRoot);
         }
 
-        private void compileNode(Node node)
-        {
-            if (node.Token == null)
-            {
+        private void compileNode(Node node) {
+            if (node.Token == null) {
                 _method.IntermediateCode.Add(new CodeEntry(OpCodes.NOP));
             }
-            else if (node.Token.IsOp())
-            {
+            else if (node.Token.IsOp()) {
                 compileOp(node);
             }
-            else if(!(node.Token is TypedToken))
-            {
+            else if (!(node.Token is TypedToken)) {
                 if (node.RelatedNamedData != null)
                     loadVar(node);
                 else
@@ -267,27 +242,22 @@ namespace uc
             }
         }
 
-        private void compileOp(Node node)
-        {
+        private void compileOp(Node node) {
             // TODO: Rewrite
-            if (node.Token.IsOp(OperationType.Assign))
-            {
+            if (node.Token.IsOp(OperationType.Assign)) {
                 compileNode(node.Right);
                 compileNode(node.Left);
             }
-            else if(node.Token.Operation.Association == Association.Right || node.Token.IsOp(OperationType.FunctionCall))
-            {
+            else if (node.Token.Operation.Association == Association.Right || node.Token.IsOp(OperationType.FunctionCall)) {
                 foreach (var child in node.Children)
                     compileNode(child);
             }
-            else
-            {
-                for (int i = node.Children.Count-1; i >= 0; --i)
+            else {
+                for (int i = node.Children.Count - 1; i >= 0; --i)
                     compileNode(node.Children[i]);
             }
 
-            switch (node.Token.Operation.Type)
-            {
+            switch (node.Token.Operation.Type) {
                 case OperationType.PreInc:
                     _method.IntermediateCode.Add(new CodeEntry(OpCodes.INC));
                     break;
@@ -393,11 +363,9 @@ namespace uc
             }
         }
 
-        private CodeEntry castToOp(IType type)
-        {
+        private CodeEntry castToOp(IType type) {
             OpCodes castOp;
-            switch (type.Type)
-            {
+            switch (type.Type) {
                 case DataTypes.Char:
                     castOp = OpCodes.CONV_CHR;
                     break;
@@ -437,10 +405,8 @@ namespace uc
             return new CodeEntry(castOp);
         }
 
-        private void loadConst(Node node)
-        {
-            switch (node.Type.Type)
-            {
+        private void loadConst(Node node) {
+            switch (node.Type.Type) {
                 case DataTypes.Char:
                     _method.IntermediateCode.Add(new CodeEntry(OpCodes.LDC_CHR, new TokenOperand(node.Token)));
                     break;
@@ -483,10 +449,8 @@ namespace uc
             }
         }
 
-        private void loadVar(Node node)
-        {
-            switch (node.RelatedNamedData)
-            {
+        private void loadVar(Node node) {
+            switch (node.RelatedNamedData) {
                 case Parameter param:
                     //var paramIdx = currentMethod.Parameters.IndexOf(param);
                     _method.IntermediateCode.Add(new CodeEntry(OpCodes.LDARG, new NamedOperand(param)));
@@ -506,10 +470,8 @@ namespace uc
             }
         }
 
-        private void storeVar(Node node)
-        {
-            switch (node.RelatedNamedData)
-            {
+        private void storeVar(Node node) {
+            switch (node.RelatedNamedData) {
                 case Parameter param:
                     //var paramIdx = currentMethod.Parameters.IndexOf(param);
                     _method.IntermediateCode.Add(new CodeEntry(OpCodes.STARG, new NamedOperand(param)));
