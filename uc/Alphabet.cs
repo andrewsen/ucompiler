@@ -25,8 +25,9 @@ namespace Translator
 		public const string CONST = "const";
 		public const string PUBLIC = "public";
 		public const string PRIVATE = "private";
-		public const string PROTECTED = "protected";
-		public const string NEW = "new";
+        public const string PROTECTED = "protected";
+        public const string NEW = "new";
+        public const string THIS = "this";
 		public const string IS = "is";
 		public const string AS = "as";
 		public const string ATTR = "@";

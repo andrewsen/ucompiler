@@ -25,7 +25,7 @@ namespace Translator
 
         public override string ToString()
         {
-            return string.Format("({0}:{1}:{2}):\n{3}\n{4}^", File, LineNum, TokenPos, Line, new string(' ', TokenPos));
+            return string.Format("({0}:{1}:{2}):\n{3}\n{4}^", File, LineNum, TokenPos, Line, TokenPos >= 0 ? new string(' ', TokenPos) : "FIXME(-1)");
         }
     }
 

@@ -98,19 +98,19 @@ namespace Translator
             return result + toks.Current.Representation;
         }
 
-        public static IType CurrentType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None) 
+        public static TypeInfo CurrentType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None) 
         {
             string identifier = toks.GetIdentifier();
             return readType(toks, identifier, conf);
         }
 
-        public static IType NextType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None)
+        public static TypeInfo NextType(this TokenStream toks, TypeReaderConf conf = TypeReaderConf.None)
         {
             string identifier = toks.GetIdentifierNext();
             return readType(toks, identifier, conf);
         }
 
-        private static IType readType(TokenStream toks, string identifier, TypeReaderConf conf)
+        private static TypeInfo readType(TokenStream toks, string identifier, TypeReaderConf conf)
         {
             if (identifier == "void" && !conf.HasFlag(TypeReaderConf.IncludeVoid))
                 InfoProvider.AddError("Unexpected `void` type", ExceptionType.IllegalType, toks.SourcePosition);
@@ -147,16 +147,16 @@ namespace Translator
             else if (identifier == "var" && dimens > 0)
                 InfoProvider.AddError("Array should have explicit type", ExceptionType.IllegalType, toks.SourcePosition);
 
-            IType result;
+            TypeInfo result;
             if (TypesHelper.IsPlainType(identifier))
-                result = new PlainType(identifier);
+                //result = typeTable.AddPlain(identifier);
+                result = new TypeInfo(TypeInfoKind.Plain, identifier, dimens);
             else if (identifier == "var")
-                result = new ImplicitType();
+                //result = new ImplicitType();
+                result = new TypeInfo(TypeInfoKind.Implicit, identifier, dimens);
             else
-                result = new ClassType(identifier);
-
-            if(dimens != 0)
-                return new ArrayType(result, dimens);
+                //result = typeTable.AddClass(identifier);//new ClassType(identifier);
+                result = new TypeInfo(TypeInfoKind.Complex, identifier, dimens);
             return result;
         }
 

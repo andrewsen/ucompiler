@@ -83,17 +83,17 @@ namespace Translator
 
         public INamedDataElement FindDeclaration(Token token)
         {
-            return FindDeclarationLocal(token) ?? Parent?.FindDeclarationRecursively(token) ?? MethodContext?.FindParameter(token);
-        }
-
-        public INamedDataElement FindDeclarationLocal(Token token)
-        {
-            return Locals.Find(loc => loc.Name == token.Representation);
+            return FindDeclarationLocal(token) ?? MethodContext?.FindParameter(token) ?? Parent?.FindDeclarationRecursively(token);
         }
 
         public INamedDataElement FindDeclarationRecursively(Token token)
         {
             return FindDeclarationLocal(token) ?? Parent?.FindDeclarationRecursively(token);
+        }
+
+        public INamedDataElement FindDeclarationLocal(Token token)
+        {
+            return Locals.Find(loc => loc.Name == token.Representation);
         }
 
         public void AddLocal(Variable localVar)
@@ -110,6 +110,8 @@ namespace Translator
         public Token Token;
 
         public IType Type;
+
+        public ValueAction ValueAction;
 
         public INamedDataElement RelatedNamedData;
 
@@ -154,6 +156,7 @@ namespace Translator
         {
             IsConst = false;
             Token = token;
+            ValueAction = ValueAction.Load;
             Children = new List<Node>();
         }
 

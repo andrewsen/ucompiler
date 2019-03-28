@@ -55,7 +55,7 @@ namespace Translator
             get
             {
                 if(Representation.First() == '"' && Representation.Last() == '"')
-                    return Representation.Substring(1, Representation.Length-2);    // TODO: Test
+                    return Representation.Substring(1, Representation.Length-2);    // TODO: Shitty
                 return Representation;
             }
         }
@@ -67,17 +67,17 @@ namespace Translator
         public static implicit operator string(Token tok)
         {
             return tok.Representation;
-		}
+        }
 
-		public bool IsOneOf(params string[] vals)
-		{
-			return vals.Contains(this.Representation);
-		}
+        public bool IsOneOf(params string[] vals)
+        {
+            return vals.Contains(this.Representation);
+        }
 
-		public bool IsOneOf(TokenType type, params string[] vals)
-		{
-			return vals.Contains(this.Representation) && Type == type;
-		}
+        public bool IsOneOf(TokenType type, params string[] vals)
+        {
+            return vals.Contains(this.Representation) && Type == type;
+        }
 
         public static bool IsNumeric(ConstantType type)
         {
@@ -237,9 +237,29 @@ namespace Translator
         {
             return int.Parse(Representation);
         }
+        public ulong GetUI64()
+        {
+            return ulong.Parse(Representation);
+        }
+        public long GetI64()
+        {
+            return long.Parse(Representation);
+        }
         public double GetDouble()
         {
             return double.Parse(Representation, NumberStyles.Any, CultureInfo.InvariantCulture);
+        }
+        public string GetString()
+        {
+            return Representation;
+        }
+        public bool GetBool()
+        {
+            return bool.Parse(Representation);
+        }
+        public char GetChar()
+        {
+            return char.Parse(Representation);
         }
         #endregion
 
@@ -247,11 +267,47 @@ namespace Translator
         {
             return Representation;
         }
+
+        public object GetValue()
+        {
+            if (!IsConstant())
+                throw new InternalException("Trying to get value of non-constant token");
+            switch (ConstType)
+            {
+                case ConstantType.Char:
+                    return GetChar();
+                case ConstantType.UI8:
+                    return GetUI8();
+                case ConstantType.I8:
+                    return GetI8();
+                case ConstantType.UI16:
+                    return GetUI16();
+                case ConstantType.I16:
+                    return GetI16();
+                case ConstantType.UI32:
+                    return GetUI32();
+                case ConstantType.I32:
+                    return GetI32();
+                case ConstantType.UI64:
+                    return GetUI64();
+                case ConstantType.I64:
+                    return GetI64();
+                case ConstantType.Double:
+                    return GetDouble();
+                case ConstantType.String:
+                    return GetString();
+                case ConstantType.Null:
+                    return null;
+                case ConstantType.Bool:
+                    return GetBool();
+            }
+            throw new InternalException($"Method error: {nameof(GetValue)}");
+        }
     }
 
     class TypedToken : Token
     {
-        public IType BoundType;
+        public readonly IType BoundType;
 
         public TypedToken(IType type)
         {

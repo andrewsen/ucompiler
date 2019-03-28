@@ -6,17 +6,7 @@ using Translator;
 
 namespace uc
 {
-    class CodeEntry
-    {
-        public string View;
-
-        public CodeEntry(string val)
-        {
-            View = val;
-        }
-    }
-
-    public class CodeGen
+    public class CodeGenSourceBackend
     {
         private DirectiveList directiveList;
         private MetadataList metadataList;
@@ -28,14 +18,16 @@ namespace uc
         private ClassType currentClass;
         private Method currentMethod;
 
-        private List<CodeEntry> code = new List<CodeEntry>();
+        private List<CodeEntry> code;
 
-        private Stack<string> continues = new Stack<string>();
-        private Stack<string> breaks = new Stack<string>();
+        private Stack<Label> continues = new Stack<Label>();
+        private Stack<Label> breaks = new Stack<Label>();
 
         private StringBuilder result = new StringBuilder();
 
-        public CodeGen(CompilerConfig conf, DirectiveList directives, MetadataList metadata, ClassList classes)
+        public List<CodeEntry> Code => code;
+
+        public CodeGenSourceBackend(CompilerConfig conf, DirectiveList directives, MetadataList metadata, ClassList classes)
         {
             config = conf;
             directiveList = directives;
@@ -53,9 +45,21 @@ namespace uc
             File.WriteAllText(config.OutInfoFile, result.ToString());
         }
 
-        private void write(string line, int offset=0)
+        private void write(string line, int offset = 0)
         {
             result.Append(new string(' ', offset) + line);
+        }
+
+        private void writeln(string line, int offset = 0)
+        {
+            result.Append(new string(' ', offset) + line + "\n");
+        }
+
+        private string opToString(CodeEntry entry, int offset)
+        {
+            if (entry.Operation == OpCodes.LABEL)
+                return (entry.Operands[0] as Label).Name + ":";
+            return new string(' ', offset) + entry.ToString();
         }
 
         private void compileClass(ClassType clazz)
@@ -103,17 +107,17 @@ namespace uc
                 string line = $".{scope} {modifiers} {method.Type} {method.Name} ({method.Parameters.ToString()})";
                 write($"{line} {{\n", 4);
 
-                currentMethod = method;
-                code.Clear();
+                //currentMethod = method;
                 compileMethodBody(method);
-                code.ForEach(entry => {
+
+                /*code.ForEach(entry => {
                     if(entry.View.EndsWith(":"))
                         write(entry.View + "\n", 0);
                     else
                         write(entry.View + "\n", 8); 
-                });
+                });*/
 
-				write("}\n\n", 4);
+                write("}\n\n", 4);
             }
 
         }
@@ -123,7 +127,7 @@ namespace uc
             write(".locals\n", 8);
 
             var locals = method.DeclaredLocals;
-            foreach(var pair in locals)
+            foreach (var pair in locals)
             {
                 var loc = pair.Key;
                 var idx = pair.Value;
@@ -134,7 +138,10 @@ namespace uc
 
             write(".end-locals\n", 8);
 
-            compileBlock(method.Body);
+            foreach (var entry in method.IntermediateCode)
+            {
+                writeln(opToString(entry, 8));
+            }
         }
 
         private void compileIExpr(IExpression iexpr)
@@ -151,6 +158,9 @@ namespace uc
             {
                 switch (iexpr)
                 {
+                    case Return ret:
+                        compileReturn(ret);
+                        break;
                     case Break b:
                         compileBreak();
                         break;
@@ -174,79 +184,85 @@ namespace uc
                         break;
                     case CodeBlock childBlock:
                         compileBlock(childBlock);
-                        break;                    
+                        break;
                 }
             }
         }
 
+        private void compileReturn(Return ret)
+        {
+            compileExpr(ret.Expression);
+            code.Add(new CodeEntry(OpCodes.RET));
+        }
+
         private void compileBreak()
         {
-            code.Add(new CodeEntry($"jmp {breaks.Peek()}:"));
+            code.Add(new CodeEntry(OpCodes.JMP, breaks.Peek()));
         }
 
         private void compileContinue()
         {
-            code.Add(new CodeEntry($"jmp {continues.Peek()}:"));
+            code.Add(new CodeEntry(OpCodes.JMP, continues.Peek()));
         }
 
         private void compileIf(If ifExpr)
         {
             var ifs = ifExpr.Conditions;
 
-            var outLabel = $"_if_out_{code.Count}";
+            var outLabel = new Label();
             foreach (var cond in ifs)
             {
                 compileExpr(ifExpr.MasterIf.Condition);
 
-                var passLabel = $"_if_next_{code.Count}";
-                code.Add(new CodeEntry($"jfalse {passLabel}"));
+                var passLabel = new Label();
+                code.Add(new CodeEntry(OpCodes.JFALSE, passLabel));
 
                 compileIExpr(cond.Body);
 
-                code.Add(new CodeEntry($"jmp {outLabel}"));
-                code.Add(new CodeEntry($"{passLabel}:"));
+                code.Add(new CodeEntry(OpCodes.JFALSE, outLabel));
+                code.Add(new CodeEntry(OpCodes.LABEL, passLabel));
             }
             compileIExpr(ifExpr.ElsePart);
-            code.Add(new CodeEntry($"{outLabel}:"));
+            code.Add(new CodeEntry(OpCodes.LABEL, outLabel));
         }
 
         private void compileWhile(While whileExpr)
         {
-            var inLabel = $"_while_in_{code.Count}";
-            var elseLabel = $"_while_else_{code.Count}";
-            var outLabel = $"_while_out_{code.Count}";
+            var inLabel = new Label();
+            var elseLabel = new Label();
+            var outLabel = new Label();
 
             continues.Push(inLabel);
             breaks.Push(elseLabel);
 
-            code.Add(new CodeEntry($"{inLabel}:"));
+            code.Add(new CodeEntry(OpCodes.LABEL, inLabel));
             compileExpr(whileExpr.Condition);
 
-            code.Add(new CodeEntry($"jfalse {outLabel}"));
+            code.Add(new CodeEntry(OpCodes.JFALSE, outLabel));
             compileIExpr(whileExpr.Body);
-            code.Add(new CodeEntry($"jmp {inLabel}"));
-            code.Add(new CodeEntry($"{elseLabel}:"));
+            code.Add(new CodeEntry(OpCodes.JMP, inLabel));
+            code.Add(new CodeEntry(OpCodes.LABEL, elseLabel));
             compileIExpr(whileExpr.ElsePart);
-            code.Add(new CodeEntry($"{outLabel}:"));
+            code.Add(new CodeEntry(OpCodes.LABEL, outLabel));
             continues.Pop();
             breaks.Pop();
         }
 
         private void compileDoWhile(DoWhile doWhileExpr)
         {
-            var inLabel = $"_do_while_in_{code.Count}";
-            var outLabel = $"_do_while_out_{code.Count}";
+            var inLabel = new Label();
+            var outLabel = new Label();
 
             continues.Push(inLabel);
             breaks.Push(outLabel);
 
-            code.Add(new CodeEntry($"{inLabel}:"));
-			compileIExpr(doWhileExpr.Body);
+            code.Add(new CodeEntry(OpCodes.LABEL, inLabel));
+            compileIExpr(doWhileExpr.Body);
 
             compileExpr(doWhileExpr.Condition);
-            code.Add(new CodeEntry($"jtrue {inLabel}"));
-            code.Add(new CodeEntry($"jmp {inLabel}"));
-            code.Add(new CodeEntry($"{outLabel}:"));
+            code.Add(new CodeEntry(OpCodes.JTRUE, inLabel));
+            code.Add(new CodeEntry(OpCodes.JMP, inLabel));
+            code.Add(new CodeEntry(OpCodes.LABEL, outLabel));
             continues.Pop();
             breaks.Pop();
         }
@@ -256,21 +272,21 @@ namespace uc
             // Condition
             compileIExpr(forExpr.Scope.Expressions[0]);
 
-            var inLabel = $"_for_in_{code.Count}";
-			var elseLabel = $"_for_else_{code.Count}";
-            var outLabel = $"_for_out_{code.Count}";
+            var inLabel = new Label();
+            var elseLabel = new Label();
+            var outLabel = new Label();
 
             continues.Push(inLabel);
             breaks.Push(elseLabel);
 
-            code.Add(new CodeEntry(inLabel));
+            code.Add(new CodeEntry(OpCodes.LABEL, inLabel));
             compileExpr(forExpr.Condition);
             compileIExpr(forExpr.Body);
             compileExpr(forExpr.Iteration);
-            code.Add(new CodeEntry($"jmp {inLabel}"));
-            code.Add(new CodeEntry($"{elseLabel}:"));
+            code.Add(new CodeEntry(OpCodes.JMP, inLabel));
+            code.Add(new CodeEntry(OpCodes.LABEL, elseLabel));
             compileIExpr(forExpr.ElsePart);
-            code.Add(new CodeEntry($"{outLabel}:"));
+            code.Add(new CodeEntry(OpCodes.LABEL, outLabel));
             continues.Pop();
             breaks.Pop();
         }
@@ -284,13 +300,13 @@ namespace uc
         {
             if (node.Token == null)
             {
-                code.Add(new CodeEntry("nop"));
+                code.Add(new CodeEntry(OpCodes.NOP));
             }
             else if (node.Token.IsOp())
             {
                 compileOp(node);
             }
-            else if(!(node.Token is TypedToken))
+            else if (!(node.Token is TypedToken))
             {
                 if (node.RelatedNamedData != null)
                     loadVar(node);
@@ -306,110 +322,111 @@ namespace uc
             {
                 compileNode(node.Right);
             }
-            else if(node.Token.Operation.Association == Association.Right || node.Token.IsOp(OperationType.FunctionCall))
+            else if (node.Token.Operation.Association == Association.Right || node.Token.IsOp(OperationType.FunctionCall))
             {
                 foreach (var child in node.Children)
                     compileNode(child);
             }
             else
             {
-                for (int i = node.Children.Count-1; i >= 0; --i)
+                for (int i = node.Children.Count - 1; i >= 0; --i)
                     compileNode(node.Children[i]);
             }
 
             switch (node.Token.Operation.Type)
             {
                 case OperationType.PreInc:
-                    code.Add(new CodeEntry("inc"));
+                    code.Add(new CodeEntry(OpCodes.INC));
                     break;
                 case OperationType.PreDec:
-                    code.Add(new CodeEntry("dec"));
+                    code.Add(new CodeEntry(OpCodes.DEC));
                     break;
                 case OperationType.PostInc: // TODO: Shit 1
-                    code.Add(new CodeEntry("inc"));
+                    code.Add(new CodeEntry(OpCodes.INC));
                     break;
                 case OperationType.PostDec: // TODO: Shit 2
-                    code.Add(new CodeEntry("dec"));
+                    code.Add(new CodeEntry(OpCodes.DEC));
                     break;
                 case OperationType.UnaryPlus:
                     break;
                 case OperationType.UnaryMinus:
-                    code.Add(new CodeEntry("neg"));
+                    code.Add(new CodeEntry(OpCodes.NEG));
                     break;
                 case OperationType.Add:
-                    code.Add(new CodeEntry("add"));
+                    code.Add(new CodeEntry(OpCodes.ADD));
                     break;
                 case OperationType.Sub:
-                    code.Add(new CodeEntry("sub"));
+                    code.Add(new CodeEntry(OpCodes.SUB));
                     break;
                 case OperationType.Mul:
-                    code.Add(new CodeEntry("mul"));
+                    code.Add(new CodeEntry(OpCodes.MUL));
                     break;
                 case OperationType.Div:
-                    code.Add(new CodeEntry("div"));
+                    code.Add(new CodeEntry(OpCodes.DIV));
                     break;
                 case OperationType.Mod:
-                    code.Add(new CodeEntry("mod"));
+                    code.Add(new CodeEntry(OpCodes.REM));
                     break;
                 case OperationType.BinOr:
-                    code.Add(new CodeEntry("or"));
+                    code.Add(new CodeEntry(OpCodes.OR));
                     break;
                 case OperationType.BinAnd:
-                    code.Add(new CodeEntry("and"));
+                    code.Add(new CodeEntry(OpCodes.AND));
                     break;
                 case OperationType.Xor:
-                    code.Add(new CodeEntry("xor"));
+                    code.Add(new CodeEntry(OpCodes.XOR));
                     break;
                 case OperationType.Inv:
-                    code.Add(new CodeEntry("inv"));
+                    code.Add(new CodeEntry(OpCodes.INV));
                     break;
                 case OperationType.ShiftLeft:
-                    code.Add(new CodeEntry("shl"));
+                    code.Add(new CodeEntry(OpCodes.SHL));
                     break;
                 case OperationType.ShiftRight:
-                    code.Add(new CodeEntry("shr"));
+                    code.Add(new CodeEntry(OpCodes.SHR));
                     break;
                 case OperationType.Not:
-                    code.Add(new CodeEntry("not"));
+                    code.Add(new CodeEntry(OpCodes.NOT));
                     break;
                 case OperationType.And:
-                    code.Add(new CodeEntry("and"));
+                    code.Add(new CodeEntry(OpCodes.AND));
                     break;
                 case OperationType.Or:
-                    code.Add(new CodeEntry("or"));
+                    code.Add(new CodeEntry(OpCodes.OR));
                     break;
                 case OperationType.Equals:
-                    code.Add(new CodeEntry("eq"));
+                    code.Add(new CodeEntry(OpCodes.EQ));
                     break;
                 case OperationType.NotEquals:
-                    code.Add(new CodeEntry("neq"));
+                    code.Add(new CodeEntry(OpCodes.NEQ));
                     break;
                 case OperationType.GreaterEquals:
-                    code.Add(new CodeEntry("gre"));
+                    code.Add(new CodeEntry(OpCodes.GTE));
                     break;
                 case OperationType.LowerEquals:
-                    code.Add(new CodeEntry("lre"));
+                    code.Add(new CodeEntry(OpCodes.LTE));
                     break;
                 case OperationType.Greater:
-                    code.Add(new CodeEntry("gr"));
+                    code.Add(new CodeEntry(OpCodes.GT));
                     break;
                 case OperationType.Lower:
-                    code.Add(new CodeEntry("lr"));
+                    code.Add(new CodeEntry(OpCodes.LT));
                     break;
                 case OperationType.Cast:
-                    code.Add(new CodeEntry("conv_" + node.Type.ToString()));
+                    code.Add(new CodeEntry(OpCodes.CONV, new TypeOperand(node.Type)));
+                    //code.Add(castToOp(node.Type));
                     break;
                 case OperationType.ArrayGet:
-                    code.Add(new CodeEntry("ldelem"));
+                    code.Add(new CodeEntry(OpCodes.LDELEM));
                     break;
                 case OperationType.ArrayMutate:
-                    code.Add(new CodeEntry("stelem"));
+                    code.Add(new CodeEntry(OpCodes.STELEM));
                     break;
                 case OperationType.NewObj:
-                    code.Add(new CodeEntry("newobj " + node.Type.ToString()));
+                    code.Add(new CodeEntry(OpCodes.NEWOBJ, new TypeOperand(node.Type)));
                     break;
                 case OperationType.NewArr:
-                    code.Add(new CodeEntry("newarr " + (node.Left.Token as TypedToken).BoundType.ToString()));
+                    code.Add(new CodeEntry(OpCodes.NEWARR, new TypeOperand((node.Left.Token as TypedToken).BoundType)));
                     break;
                 case OperationType.Assign:
                     storeVar(node.Left);
@@ -421,48 +438,92 @@ namespace uc
             }
         }
 
+        private CodeEntry castToOp(IType type)
+        {
+            OpCodes castOp;
+            switch (type.Type)
+            {
+                case DataTypes.Char:
+                    castOp = OpCodes.CONV_CHR;
+                    break;
+                case DataTypes.UI8:
+                    castOp = OpCodes.CONV_UI8;
+                    break;
+                case DataTypes.I8:
+                    castOp = OpCodes.CONV_I8;
+                    break;
+                case DataTypes.UI16:
+                    castOp = OpCodes.CONV_UI16;
+                    break;
+                case DataTypes.I16:
+                    castOp = OpCodes.CONV_I16;
+                    break;
+                case DataTypes.UI32:
+                    castOp = OpCodes.CONV_UI32;
+                    break;
+                case DataTypes.I32:
+                    castOp = OpCodes.CONV_I32;
+                    break;
+                case DataTypes.UI64:
+                    castOp = OpCodes.CONV_UI64;
+                    break;
+                case DataTypes.I64:
+                    castOp = OpCodes.CONV_I64;
+                    break;
+                case DataTypes.Double:
+                    castOp = OpCodes.CONV_F;
+                    break;
+                case DataTypes.Bool:
+                    castOp = OpCodes.CONV_BOOL;
+                    break;
+                default:
+                    return null;
+            }
+            return new CodeEntry(castOp);
+        }
+
         private void loadConst(Node node)
         {
             switch (node.Type.Type)
             {
                 case DataTypes.Char:
-                    code.Add(new CodeEntry($"ldc_char {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_CHR, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.UI8:
-                    code.Add(new CodeEntry($"ldc_ui8 {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_UI8, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.I8:
-                    code.Add(new CodeEntry($"ldc_i8 {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_I8, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.UI16:
-                    code.Add(new CodeEntry($"ldc_ui16 {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_UI16, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.I16:
-                    code.Add(new CodeEntry($"ldc_i16 {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_I16, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.UI32:
-                    code.Add(new CodeEntry($"ldc_ui32 {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_UI32, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.I32:
-                    code.Add(new CodeEntry($"ldc_i32 {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_I32, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.UI64:
-                    code.Add(new CodeEntry($"ldc_ui64 {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_UI64, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.I64:
-                    code.Add(new CodeEntry($"ldc_i64 {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_I64, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.Double:
-                    code.Add(new CodeEntry($"ldc_f {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_F, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.String:
-                    code.Add(new CodeEntry($"ldc_str {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_STR, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.Null:
-                    code.Add(new CodeEntry($"ldnull {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_NULL, new TokenOperand(node.Token)));
                     break;
                 case DataTypes.Bool:
-                    code.Add(new CodeEntry($"ldc_bool {node.Token.Representation}"));
+                    code.Add(new CodeEntry(OpCodes.LDC_BOOL, new TokenOperand(node.Token)));
                     break;
             }
         }
@@ -472,20 +533,20 @@ namespace uc
             switch (node.RelatedNamedData)
             {
                 case Parameter param:
-                    var paramIdx = currentMethod.Parameters.IndexOf(param) + 1;
-                    code.Add(new CodeEntry($"ldarg {paramIdx}"));
+                    //var paramIdx = currentMethod.Parameters.IndexOf(param);
+                    code.Add(new CodeEntry(OpCodes.LDARG, new NamedOperand(param)));
                     break;
                 case Variable variable:
-                    var locIdx = currentMethod.DeclaredLocals[variable];
-                    code.Add(new CodeEntry($"ldloc {locIdx}"));
+                    //var locIdx = currentMethod.DeclaredLocals[variable];
+                    code.Add(new CodeEntry(OpCodes.LDLOC, new NamedOperand(variable)));
                     break;
                 case Method meth:
-                    var sign = meth.Signature;
-                    code.Add(new CodeEntry($"call {sign}"));
+                    //var sign = meth.Signature;
+                    code.Add(new CodeEntry(OpCodes.CALL, new NamedOperand(meth)));
                     break;
                 case Field field:
-                    var fldIdx = field.Class.SymbolTable.FieldIndex(field);
-                    code.Add(new CodeEntry($"ldfld {field.Class.Name}::{fldIdx}"));
+                    //var fldIdx = field.Class.SymbolTable.FieldIndex(field);
+                    code.Add(new CodeEntry(OpCodes.LDFLD, new NamedOperand(field)));
                     break;
             }
         }
@@ -495,16 +556,16 @@ namespace uc
             switch (node.RelatedNamedData)
             {
                 case Parameter param:
-                    var paramIdx = currentMethod.Parameters.IndexOf(param) + 1;
-                    code.Add(new CodeEntry($"starg {paramIdx}"));
+                    //var paramIdx = currentMethod.Parameters.IndexOf(param);
+                    code.Add(new CodeEntry(OpCodes.STARG, new NamedOperand(param)));
                     break;
                 case Variable variable:
-                    var locIdx = currentMethod.DeclaredLocals[variable];
-                    code.Add(new CodeEntry($"stloc {locIdx}"));
+                    //var locIdx = currentMethod.DeclaredLocals[variable];
+                    code.Add(new CodeEntry(OpCodes.STLOC, new NamedOperand(variable)));
                     break;
                 case Field field:
-                    var fldIdx = field.Class.SymbolTable.FieldIndex(field);
-                    code.Add(new CodeEntry($"stfld {field.Class.Name}::{fldIdx}"));
+                    //var fldIdx = field.Class.SymbolTable.FieldIndex(field);
+                    code.Add(new CodeEntry(OpCodes.STFLD, new NamedOperand(field)));
                     break;
             }
         }

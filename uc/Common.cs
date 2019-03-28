@@ -32,6 +32,7 @@ namespace Translator
 
     public delegate void ErrorLimitReachedDelegate();
 
+    [Serializable]
     public class InternalException : Exception
     {
         public InternalException(string message)
@@ -169,6 +170,11 @@ namespace Translator
                 Console.WriteLine("at {0}", i.Where);
                 //Console.WriteLine("\t`{0}`:{1}", i.ExceptionType, i.What);
             }
+        }
+
+        internal static void AddFatal(string v, object memberNotFound, SourcePosition position)
+        {
+            throw new NotImplementedException();
         }
     }
 

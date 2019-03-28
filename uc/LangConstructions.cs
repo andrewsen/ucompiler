@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using uc;
 
 namespace Translator
@@ -45,6 +46,7 @@ namespace Translator
 
     public class Variable : INamedDataElement
     {
+        public readonly Method MethodContext;
         public bool IsAssigned;
         public bool IsUsed;
 
@@ -66,8 +68,9 @@ namespace Translator
             set;
         }
 
-        public Variable()
+        public Variable(Method method)
         {
+            MethodContext = method;
             IsAssigned = false;
             IsUsed = false;
         }
@@ -84,6 +87,11 @@ namespace Translator
 
     public class Parameter : Variable
     {
+        public Parameter(Method method) 
+            : base(method)
+        {
+        }
+
         public override string ToString()
         {
             return $"{Type.ToString()} {Name}";
@@ -92,6 +100,16 @@ namespace Translator
 
     public class ParameterList : List<Parameter>
     {
+        public ParameterList()
+        {
+        }
+
+        public ParameterList(IEnumerable<Parameter> paramList)
+            : base(paramList)
+        {
+            
+        }
+
         public override string ToString()
         {
             var result = string.Join(", ", this);
@@ -145,10 +163,15 @@ namespace Translator
 
     public class Method : Field
     {
-        private int localCount;
+        private int _localCount;
+        private ParameterList _parameters;
+        private ParameterList _visibleParameters;
 
-		public DeclarationForm DeclarationForm;
-        public ParameterList Parameters;
+        public List<CodeEntry> IntermediateCode;
+
+        public DeclarationForm DeclarationForm;
+        public ParameterList Parameters => _parameters;
+        public ParameterList VisibleParameters => _visibleParameters;
 
         public CodeBlock Body;
         public Dictionary<Variable, int> DeclaredLocals;
@@ -162,22 +185,40 @@ namespace Translator
 
         public Method()
         {
-            localCount = 0;
+            _localCount = 0;
             DeclaredLocals = new Dictionary<Variable, int>();
+            IntermediateCode = new List<CodeEntry>();
         }
 		
 		public void AddLocal(Variable localVar)
 		{
-            DeclaredLocals.Add(localVar, localCount++);
+            DeclaredLocals.Add(localVar, _localCount++);
 		}
+
+        public void SetParameters(ParameterList paramList)
+        {
+            _parameters = paramList;
+            if (Modifiers.HasFlag(ClassEntryModifiers.Static | ClassEntryModifiers.Constructor))
+                _visibleParameters = paramList;
+            else
+            {
+                _parameters.Insert(0, new Parameter(this)
+                {
+                    DeclarationPosition = DeclarationPosition,
+                    Name = Alphabet.THIS,
+                    Type = Class,
+                });
+				_visibleParameters = new ParameterList(_parameters.Skip(1));
+            }
+        }
 
         public bool ParametersFitsArgs(List<IType> argList)
         {
-            if (Parameters.Count != argList.Count)
+            if (VisibleParameters.Count != argList.Count)
                 return false;
             for (int i = 0; i < argList.Count; ++i)
             {
-                var parameter = Parameters[i];
+                var parameter = VisibleParameters[i];
                 var argument = argList[i];
                 if (!parameter.Type.Equals(argument) && !Compiler.CanCast(argument, parameter.Type))
                 {
@@ -189,19 +230,27 @@ namespace Translator
 		
         public bool ParametersFitsValues(List<Node> argList)
         {
-            if (Parameters.Count != argList.Count)
+            if (VisibleParameters.Count != argList.Count)
                 return false;
+
             for (int i = 0; i < argList.Count; ++i)
             {
-                var parameter = Parameters[i];
+                var parameter = VisibleParameters[i];
                 var argument = argList[i];
                 if (!parameter.Type.Equals(argument) && !Compiler.CanCast(argument.Type, parameter.Type))
                 {
                     // TODO: Finish
-                    //if(argument.IsConst && TypesHelper.IsIntegerType(argument.Type))
-                    //{
-                    //    var constantToken = Compiler.FoldConstants(argument);
-                    //}
+                    if(argument.IsConst && TypesHelper.IsIntegerType(argument.Type) && TypesHelper.IsNumericType(parameter.Type))
+                    {
+                        var constantToken = Compiler.FoldConstants(argument);
+                        if(TypesHelper.SmallerEquals((DataTypes)constantToken.GetMinimalIntType(), parameter.Type.Type))
+                        {
+                            // FIXME: Andrew Senko: remove direct type construction
+                            argument.Type = new PlainType(parameter.Type.Type);
+                            argument.Token = constantToken;
+                            continue;
+                        }
+                    }
                     return false;
                 }
             }

@@ -1,0 +1,7 @@
+bin
+obj
+*.exe
+/packages
+/.vs
+/*.mc
+/*.txt

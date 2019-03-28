@@ -50,8 +50,9 @@
     <Compile Include="Alphabet.cs" />
     <Compile Include="OperatorPriority.cs" />
     <Compile Include="TypeMatrices.cs" />
-    <Compile Include="CodeGen.cs" />
+    <Compile Include="IRCodeGenerator.cs" />
     <Compile Include="TypesHelper.cs" />
+    <Compile Include="CodeGenSourceBackend.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

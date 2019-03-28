@@ -13,6 +13,15 @@ namespace Translator
         }
     }
 
+    public interface ITypeTable
+    {
+        PlainType AddPlain(DataTypes type);
+
+        ClassType AddClass(string name);
+
+        ArrayType AddArray(IType inner, int dimensions);
+    }
+
     public class ImplicitType : IType
     {
         public DataTypes Type => throw new InternalException("Trying to get type of implicit");
@@ -23,13 +32,11 @@ namespace Translator
         }
     }
 
-
     public class PlainType : IType
     {
         public DataTypes Type
         {
             get;
-            set;
         }
 
         public PlainType(string plain)
@@ -40,6 +47,11 @@ namespace Translator
         public PlainType(DataTypes plain)
         {
             Type = plain;
+        }
+
+        public PlainType(ConstantType plain)
+        {
+            Type = (DataTypes)plain;
         }
 
         public static DataTypes FromString(string type)
@@ -106,6 +118,7 @@ namespace Translator
     {
         public string Name;
         public Scope Scope;
+		public bool IsDefined;
         public ClassType Parent;
         public AttributeList AttributeList;
         public ClassSymbolTable SymbolTable;
@@ -116,15 +129,16 @@ namespace Translator
         public ClassType(string name)
         {
             Name = name;
+            IsDefined = false;
 
             SymbolTable = new ClassSymbolTable();
             AttributeList = new AttributeList();
 
-            var fieldConstructor = new Method();
-            fieldConstructor.Name = name + "$fldCtor";
-            fieldConstructor.Type = new PlainType(DataTypes.Void);
-            fieldConstructor.Parameters = new ParameterList();
-            fieldConstructor.Scope = Scope.Private;
+            //var fieldConstructor = new Method();
+            //fieldConstructor.Name = name + "$fldCtor";
+            //fieldConstructor.Type = new PlainType(DataTypes.Void);
+            //fieldConstructor.Parameters = new ParameterList();
+            //fieldConstructor.Scope = Scope.Private;
 
             //SymbolTable.Add(fieldConstructor);
 		}
@@ -215,19 +229,18 @@ namespace Translator
 
     public class ArrayType : IType
     {
-        public int Dimensions;
-        public IType Inner;
+        public int Dimensions { get; }
+        public IType Inner { get; }
 
         public DataTypes Type => DataTypes.Array;
 
-        public IType ElementType 
+        public IType GetElementType(ITypeTable itable)
         { 
-            get
-            {
-                if (Dimensions == 1)
-                    return Inner;
+            if (Dimensions == 1)
+                return Inner;
+            if(itable == null)
                 return new ArrayType(Inner, Dimensions - 1);
-            }
+            return itable.AddArray(Inner, Dimensions - 1);
         }
 
         public ArrayType(IType inner, int dimens)
@@ -249,6 +262,101 @@ namespace Translator
             if (!(other is ArrayType array))
                 return false;
             return array.Dimensions == Dimensions && array.Inner.Equals(Inner);
+        }
+    }
+
+    public enum TypeInfoKind
+    {
+        Plain, Complex, Implicit
+    }
+
+    public class TypeInfo
+    {
+        public readonly int Dimensions;
+
+        /// <summary>
+        /// Name of type if type is plain or complex (class) or name of array basis
+        /// </summary>
+        public readonly string InnerName;
+        public readonly TypeInfoKind Kind;
+
+        public TypeInfo(TypeInfoKind kind, string name, int dimensions=0)
+        {
+            Kind = kind;
+            InnerName = name;
+            Dimensions = dimensions;
+        }
+    }
+
+    public class TypeTable : ITypeTable
+    {
+        private List<IType> registeredTypes;
+
+        public void GenerateTypeTable(IEnumerable<IType> predefined)
+        {
+            registeredTypes = new List<IType>(predefined);
+        }
+
+        public PlainType AddPlain(string typename)
+        {
+            return AddPlain(PlainType.FromString(typename));
+        }
+
+        public PlainType AddPlain(ConstantType ctype)
+        {
+            return AddPlain((DataTypes)ctype);
+        }
+
+        public PlainType AddPlain(DataTypes type)
+        {
+            var result = registeredTypes.OfType<PlainType>()
+                                        .FirstOrDefault(p => p.Type == type);
+            if (result == null)
+            {
+                result = new PlainType(type);
+                registeredTypes.Add(result);
+            }
+            return result;
+        }
+
+        public ClassType AddClass(string name)
+        {
+            var result = registeredTypes.OfType<ClassType>()
+                                        .FirstOrDefault(c => c.Name == name);
+            if(result == null)
+            {
+                result = new ClassType(name);
+                registeredTypes.Add(result);
+            }
+            return result;
+        }
+
+        public void AddClass(ClassType clazz)
+        {
+            if (registeredTypes.OfType<ClassType>().Contains(clazz))
+                InfoProvider.AddError("Class already registered", ExceptionType.InternalError, clazz.DeclarationPosition);
+            registeredTypes.Add(clazz);
+        }
+
+        public ArrayType AddArray(IType inner, int dimensions)
+        {
+            if (!registeredTypes.Contains(inner))
+                InfoProvider.AddFatal("Can't find array base type in registered types", ExceptionType.InternalError, null);
+
+            var array = registeredTypes.OfType<ArrayType>()
+                                       .FirstOrDefault(a => a.Inner == inner && a.Dimensions == dimensions);
+            if(array == null)
+            {
+                array = new ArrayType(inner, dimensions);
+                registeredTypes.Add(array);
+            }
+            return array;
+        }
+
+        public ClassType FindComplexType(string name)
+        {
+            return registeredTypes.OfType<ClassType>()
+                                  .FirstOrDefault(c => c.Name == name);
         }
     }
 }

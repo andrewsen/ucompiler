@@ -66,8 +66,8 @@ namespace Translator
     }
 
     public enum ExceptionType
-	{
-		None,
+    {
+        None,
         AdditionalInfo,
         IdentifierInUse,
         UninitedConstant,
@@ -123,7 +123,9 @@ namespace Translator
         UnboundCase,
         UnboundDefault,
         KeywordExpected,
-        OverflowWarning
+        OverflowWarning,
+        UndefinedType,
+        MemberNotFound
     }
 
     public enum DeclarationForm
@@ -139,7 +141,14 @@ namespace Translator
     [Flags]
     public enum ClassEntryModifiers
     {
-        None, Const, Static, Native
+        None, Const, Static, Native,
+        Constructor
+    }
+
+    [Flags]
+    public enum ValueAction
+    {
+        Load, Store
     }
 
     [Flags]
@@ -158,6 +167,7 @@ namespace Translator
         MUL,
         DIV,
         REM,
+        NEG,
         CONV_UI8,
         CONV_I8,
         CONV_UI16,
@@ -168,6 +178,7 @@ namespace Translator
         CONV_I64,
         CONV_UI64,
         CONV_F,
+        CONV_BOOL,
         JMP,
         JZ,
         JFALSE,
@@ -254,5 +265,10 @@ namespace Translator
         SIZEOF,
         TYPEOF,
         RET,
+
+        // Service opcodes
+        LABEL,
+        CONV,
+        LDC_BOOL,
     }
 }
